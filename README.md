@@ -14,16 +14,16 @@ features a few customizable options. These include:
 
 Inputs:
 -------
-    - First Segmentation File (seg1, as .tif file)
-    - Second Segmentation File (seg2, as .tif file)
-      This should be the "ground truth" segmentation if applicable
-    - Foreground Restriction (flag, optional)
-    - Boundary Thinning (not complete yet)
-    - Metric Types
-            - Rand Score - ISBI 2012 Error Metric
-            - Rand Error - 1 - RandIndex
-            - Variation Score - ISBI 2012 Information Theoretic Error Metric
-            - Variation of Information
+- First Segmentation File (seg1, as .tif file)
+- Second Segmentation File (seg2, as .tif file)
+ This should be the "ground truth" segmentation if applicable
+- Foreground Restriction (flag, optional)
+- Boundary Thinning (not complete yet)
+- Metric Types
+ - Rand Score - ISBI 2012 Error Metric
+ - Rand Error - 1 - RandIndex
+ - Variation Score - ISBI 2012 Information Theoretic Error Metric
+ - Variation of Information
 
 
 Dependencies:
