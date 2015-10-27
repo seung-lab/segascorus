@@ -52,7 +52,7 @@ def choose_two(n):
 	# = (n * (n-1)) / 2.0, with fewer overflows
 	return (n / 2.0) * (n-1)
 
-def om_rand_score(om, alpha=0.5, merge_err=False, split_err=False):
+def om_rand_score(om, alpha=0.5, merge_score=False, split_score=False):
 	'''
 	Calculates the rand SCORE (from ISBI2012) of an unnormalized (raw counts) overlap matrix
 
@@ -75,21 +75,21 @@ def om_rand_score(om, alpha=0.5, merge_err=False, split_err=False):
 	#p term requires a bit more work with sparse matrix
 	p_term = np.sum( np.square(np.copy(om.data) / N) )
 
-	split_error = (p_term / t_term)
-	merge_error = (p_term / s_term)
+	split_sc = (p_term / t_term)
+	merge_sc = (p_term / s_term)
 
-	full_error = p_term / (alpha * s_term + (1-alpha) * t_term)	
+	full_sc = p_term / (alpha * s_term + (1-alpha) * t_term)	
 
-	if split_err and merge_err:
-		return full_error, merge_error, split_error
-	elif split_err:
-		return full_error, split_error
-	elif merge_err:
-		return full_error, merge_error
+	if split_score and merge_score:
+		return full_sc, merge_sc, split_sc
+	elif split_score:
+		return full_sc, split_sc
+	elif merge_score:
+		return full_sc, merge_sc
 	else:
-		return full_error
+		return full_sc
 
-def om_rand_error(om, merge_err=False, split_err=False):
+def om_rand_error(om, merge_error=False, split_error=False):
 	'''
 	Calculates the rand error (= 1 - RandIndex) of an unnormalized (raw counts) overlap matrix
 
@@ -117,19 +117,19 @@ def om_rand_error(om, merge_err=False, split_err=False):
 	total_pairs = choose_two(N)
 	overflow_warning_check(total_pairs)
 
-	split_error = (TPplusFN - TP) / total_pairs
-	merge_error = (TPplusFP - TP) / total_pairs
+	split_err = (TPplusFN - TP) / total_pairs
+	merge_err = (TPplusFP - TP) / total_pairs
 
-	full_error = (TPplusFP + TPplusFN - 2*TP) / total_pairs
+	full_err = (TPplusFP + TPplusFN - 2*TP) / total_pairs
 
-	if split_err and merge_err:
-		return full_error, merge_error, split_error
-	elif split_err:
-		return full_error, split_error
-	elif merge_err:
-		return full_error, merge_error
+	if split_error and merge_error:
+		return full_err, merge_err, split_err
+	elif split_error:
+		return full_err, split_err
+	elif merge_error:
+		return full_err, merge_err
 	else:
-		return full_error
+		return full_err
 
 def om_variation_score(om, alpha=0.5, merge_score=False, split_score=False):
 	'''
@@ -166,21 +166,21 @@ def om_variation_score(om, alpha=0.5, merge_score=False, split_score=False):
 
 	I = Hp + HT + HS
 
-	split_score = I / HS
-	merge_score = I / HT
+	split_sc = I / HS
+	merge_sc = I / HT
 
-	full_score = I / ( (1 - alpha) * HS + alpha * HT )
+	full_sc = I / ( (1 - alpha) * HS + alpha * HT )
 
 	if split_score and merge_score:
-		return full_score, merge_score, split_score
+		return full_sc, merge_sc, split_sc
 	elif split_score:
-		return full_score, split_score
+		return full_sc, split_sc
 	elif merge_score:
-		return full_score, merge_score
+		return full_sc, merge_sc
 	else:
-		return full_score
+		return full_sc
 
-def om_variation_information(om, merge_err=False, split_err=False):
+def om_variation_information(om, merge_error=False, split_error=False):
 	'''
 	Calculates the variation of information of an unnormalized (raw counts) overlap matrix
 
@@ -206,19 +206,19 @@ def om_variation_information(om, merge_err=False, split_err=False):
 	rows, cols, vals = sp.find(om)
 	vals = vals / N #p_ij
 
-	split_error = np.sum( cy.om_VI_byaxis( cols, vals, s_i.ravel() ) )
-	merge_error = np.sum( cy.om_VI_byaxis( rows, vals, t_j.ravel() ) )
+	split_err = np.sum( cy.om_VI_byaxis( cols, vals, s_i.ravel() ) )
+	merge_err = np.sum( cy.om_VI_byaxis( rows, vals, t_j.ravel() ) )
 
-	full_error = split_error + merge_error
+	full_err = split_err + merge_err
 
-	if split_err and merge_err:
-		return full_error, merge_error, split_error
-	elif split_err:
-		return full_error, split_error
-	elif merge_err:
-		return full_error, merge_error
+	if split_error and merge_error:
+		return full_err, merge_err, split_err
+	elif split_error:
+		return full_err, split_err
+	elif merge_error:
+		return full_err, merge_err
 	else:
-		return full_error
+		return full_err
 
 def calc_overlap_matrix(seg1, seg2):
 	'''Calculates the overlap matrix of two segmentations'''
@@ -230,6 +230,10 @@ def calc_overlap_matrix(seg1, seg2):
 	print "Completed in %f seconds" % (end-start)
 
 	return om
+
+def relabel2d(seg1, seg2):
+	'''Relabels segmentations to be 2d for 2d-based error metrics'''
+	return cy.relabel1N(seg1), cy.relabel1N(seg2)
 
 def foreground_restriction(seg1, seg2):
 	'''Performs foreground restriction on seg2's foreground'''
@@ -297,6 +301,13 @@ def seg_rand_error(seg1, seg2, merge_err=False, split_err=False):
 	return seg_error(om_rand_error, "Rand Error",
 		seg1, seg2, merge_err, split_err)
 
+def seg_2d_rand_error(seg1, seg2, merge_err=False, split_err=False):
+
+	print "Relabelling segmentations for 2d comparison"
+	seg1, seg2 = relabel2d(seg1, seg2)
+
+	return seg_rand_error(seg1, seg2, merge_err, split_err)
+
 def seg_variation_score(seg1, seg2, merge_score=False, split_score=False, alpha=0.5):
 	return seg_score(om_variation_score, "VI Score",
 		seg1, seg2, merge_score, split_score, alpha)
@@ -339,7 +350,7 @@ def overflow_warning_check(n_val):
 	'''
 
 	warning_string = ("WARNING: total number of pairs exceeds bit length.",
-		"\n You may see overflow errors.\n"
+		"\n You may see overflow errors.\n")
 
 	if DTYPE == 'uint64':
 		if n_val > 2 ** 64:
@@ -348,30 +359,54 @@ def overflow_warning_check(n_val):
 		if n_val > 2 ** 32:
 			print warning_string
 
+def import_tif(filename):
+    return tifffile.imread(filename).astype(DTYPE)
+
 #=====================================================================
 #Main function (script functionality)
 
 def main(seg1_fname, seg2_fname, 
-	calc_rand_score=False,
+	calc_rand_score=True,
+	calc_2d_rand_score=False,
 	calc_rand_error=True, 
-	calc_variation_score=False,
-	calc_variation_information=False,
-	foreground_restricted=True):
+	calc_2d_rand_error=False,
+	calc_variation_score=True,
+	calc_2d_variation_score=False,
+	calc_variation_information=True,
+	calc_2d_variation_information=False,
+	foreground_restricted=True,):
 	'''
 	Script functionality, computes the overlap matrix, computes any specified metrics,
 	and prints the results nicely
 	'''
 
 	print "Loading Data..."
-	seg1 = tifffile.imread(seg1_fname).astype(DTYPE)
-	seg2 = tifffile.imread(seg2_fname).astype(DTYPE)
+	seg1 = import_tif(seg1_fname)
+	seg2 = import_tif(seg2_fname)
 
 	results = {}
 
-	if foreground_restricted:
-		seg1, seg2 = foreground_restriction(seg1, seg2)
+	calc_2d_metric = any((calc_2d_rand_score, calc_2d_rand_error,
+		calc_2d_variation_score, calc_2d_variation_information))
 
-	om = calc_overlap_matrix(seg1, seg2)
+	calc_3d_metric = any((calc_rand_score, calc_rand_error,
+		calc_variation_score, calc_variation_information))
+
+	if calc_2d_metric:
+		seg1_2d, seg2_2d = relabel2d(seg1, seg2)
+
+	if foreground_restricted:
+		if calc_3d_metric:
+			seg1, seg2 = foreground_restriction(seg1, seg2)
+
+		if calc_2d_metric:
+			seg1_2d, seg2_2d = foreground_restriction(seg1_2d, seg2_2d)
+
+	if calc_3d_metric:
+		om = calc_overlap_matrix(seg1, seg2)
+
+	if calc_2d_metric:
+		om_2d = calc_overlap_matrix(seg1_2d, seg2_2d)
 
 	if calc_rand_score:
 		(f, m, s) = om_score(om_rand_score, "Rand Score", om, True, True, 0.5)
@@ -380,12 +415,27 @@ def main(seg1_fname, seg2_fname,
 		results['Rand Score Split'] = s
 		results['Rand Score Merge'] = m
 
+	if calc_2d_rand_score:
+		(f, m, s) = om_score(om_rand_score, "Rand Score", om_2d, True, True, 0.5)
+
+		results['2D Rand Score Full'] = f
+		results['2D Rand Score Split'] = s
+		results['2D Rand Score Merge'] = m
+
 	if calc_rand_error:
 		(f, m, s) =  om_error(om_rand_error, "Rand Error", om, True, True)
 
 		results['Rand Error Full'] = f
 		results['Rand Error Split'] = s
 		results['Rand Error Merge'] = m
+
+	if calc_2d_rand_error:
+
+		(f, m, s) = om_error(om_rand_error, "Rand Error", om_2d, True, True)
+
+		results['2D Rand Error Full'] = f
+		results['2D Rand Error Split'] = s
+		results['2D Rand Error Merge'] = m	
 
 	if calc_variation_score:
 		(f, m, s) = om_score(om_variation_score, "Variation Score", om, True, True, 0.5)
@@ -394,12 +444,26 @@ def main(seg1_fname, seg2_fname,
 		results['Variation Score Split'] = s
 		results['Variation Score Merge'] = m
 
+	if calc_2d_variation_score:
+		(f, m, s) = om_score(om_variation_score, "Variation Score", om_2d, True, True, 0.5)
+
+		results['2D Variation Score Full'] = f
+		results['2D Variation Score Split'] = s
+		results['2D Variation Score Merge'] = m
+
 	if calc_variation_information:
 		(f, m, s) =  om_error(om_variation_information, "Variation of Information", om, True, True)
 
 		results['Variation of Information Full'] = f
 		results['Variation of Information Split'] = s
 		results['Variation of Information Merge'] = m
+
+	if calc_2d_variation_information:
+		(f, m, s) =  om_error(om_variation_information, "Variation of Information", om_2d, True, True)
+
+		results['2D Variation of Information Full'] = f
+		results['2D Variation of Information Split'] = s
+		results['2D Variation of Information Merge'] = m
 
 	print
 	print_metrics(results)
@@ -414,24 +478,43 @@ if __name__ == '__main__':
 		help="Filename of the output image")
 	parser.add_argument('seg2_filename',
 		help='Filename of the labels for comparison- "ground truth" if available')
-	parser.add_argument('-rs','-calc_rand_score',
+
+	#NOTE: "No" args store whether or not to calc the metric
+	# the 'no' part of the flag is for command-line semantics
+	parser.add_argument('-no_rs','-no_rand_score',
+		default=True, action='store_true')
+	parser.add_argument('-rs2d','-calc_2d_rand_score',
 		default=False, action='store_true')
-	parser.add_argument('-re','-calc_rand_error',
+
+	parser.add_argument('-no_re','-no_rand_error',
 		default=True, action='store_false')
-	parser.add_argument('-vs','-calc_variation_score',
+	parser.add_argument('-re2d','-calc_2d_rand_error',
 		default=False, action='store_true')
-	parser.add_argument('-vi','-calc_variation_information',
+
+	parser.add_argument('-no_vs','-no_variation_score',
+		default=True, action='store_false')
+	parser.add_argument('-vs2d','-calc_2d_variation_score',
 		default=False, action='store_true')
-	parser.add_argument('-fr','-foreground_restriction',
+
+	parser.add_argument('-no_vi','-no_variation_information',
+		default=True, action='store_false')
+	parser.add_argument('-vi2d','-calc_2d_variation_information',
+		default=False, action='store_true')
+
+	parser.add_argument('-no_fr','-foreground_restriction',
 		default=True, action='store_false')
 
 	args = parser.parse_args()
 
 	main(args.seg1_filename,
 	     args.seg2_filename,
-	     args.rs,
-	     args.re,
-	     args.vs,
-	     args.vi,
-	     args.fr)
+	     args.no_rs,
+	     args.rs2d,
+	     args.no_re,
+	     args.re2d,
+	     args.no_vs,
+	     args.vs2d,
+	     args.no_vi,
+	     args.vi2d,
+	     args.no_fr)
 
