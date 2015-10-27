@@ -38,4 +38,5 @@ Dependencies:
 Installation (compiling Cython module):
 -------------
     make
-
+    
+NOTE: You will see a harmless warning when compiling the Cython functions. See (http://docs.cython.org/src/reference/compilation.html)
