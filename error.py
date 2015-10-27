@@ -3,8 +3,8 @@ __doc__ = '''
 SeungLab Error Metrics for Volummetric Segmentation
 
  This module computes the error between two segmentations of a volume.
-The metric can either be rand error (or soon variation of information), and
-features a few customizable options. These include
+The metrics are either based on the Rand Index or Variation of Information, and
+features a few customizable options. These include:
 
 - Foreground Restriction- computing error over voxels where the
   second segmentation (presumed to be ground truth) != 0.
@@ -15,14 +15,14 @@ Inputs
 	- First Segmentation File (seg1, as .tif file)
 	- Second Segmentation File (seg2, as .tif file)
 	  This should be the "ground truth" segmentation if applicable
-	- Foreground Restriction (flag, optional)
-	- Boundary Thinning (int, optional, not complete yet)
+	- Foreground Restriction (optional flag -fr, default=true)
+	- Boundary Thinning (optional flag -bt, not complete yet)
 	- Metric Types
 		- Rand Score - ISBI 2012 Error Metric
 		- Rand Error - 1 - RandIndex
 		- Variation Score - ISBI 2012 Information Theoretic Error Metric
 		- Variation of Information
-	
+
 Main Outputs:
 
 	-Reports requested error metrics by a print
@@ -32,13 +32,17 @@ Nicholas Turner, Jingpeng Wu June-October 2015
 
 import timeit
 import argparse
-import tifffile #dependency
+from os import path
+
+#Dependencies
+import tifffile
 import numpy as np
 import scipy.sparse as sp
-from os import path
 
 #Cython functions
 import cy
+
+DTYPE='uint64'
 
 def choose_two(n):
 	'''
@@ -52,18 +56,19 @@ def om_rand_score(om, alpha=0.5, merge_err=False, split_err=False):
 	'''
 	Calculates the rand SCORE (from ISBI2012) of an unnormalized (raw counts) overlap matrix
 
-	Can also return split and/or merge error separately ASSUMING that the "ground-truth"
+	Can also return split and/or merge error separately assuming that the "ground-truth"
 	segmentation is represented in the 2nd axis (columns)
 
 	In order to use multiple alpha values, pass in an np.array of the desired values
 	'''
 
-	col_counts = om.sum(1) #t_j * N from preprint
-	row_counts = om.sum(0) #s_i * N from preprint
+	col_counts = om.sum(1) #t_j * N
+	row_counts = om.sum(0) #s_i * N
 
 	#for float division below
 	N = float( col_counts.sum() )
 
+	#implicit conversion to float64
 	t_term = np.sum( np.square(col_counts / N) )
 	s_term = np.sum( np.square(row_counts / N) )
 
@@ -88,11 +93,11 @@ def om_rand_error(om, merge_err=False, split_err=False):
 	'''
 	Calculates the rand error (= 1 - RandIndex) of an unnormalized (raw counts) overlap matrix
 
-	Can also return split and/or merge error separately ASSUMING that the "ground-truth"
+	Can also return split and/or merge error separately assuming that the "ground-truth"
 	segmentation is represented in the 2nd axis (columns)
 	'''
 
-	#Transforming to np.array makes ravel work properly
+	#Converting to np.array makes ravel work properly
 	# (sp version seems buggy)
 	col_counts = np.array( om.sum(1) )
 	row_counts = np.array( om.sum(0) )
@@ -110,6 +115,7 @@ def om_rand_error(om, merge_err=False, split_err=False):
 	TP = np.sum(p_ij_vals)
 
 	total_pairs = choose_two(N)
+	overflow_warning_check(total_pairs)
 
 	split_error = (TPplusFN - TP) / total_pairs
 	merge_error = (TPplusFP - TP) / total_pairs
@@ -127,9 +133,9 @@ def om_rand_error(om, merge_err=False, split_err=False):
 
 def om_variation_score(om, alpha=0.5, merge_score=False, split_score=False):
 	'''
-	Calculates the variation of information SCORE (from preprint) of an unnormalized (raw counts) overlap matrix
+	Calculates the variation of information SCORE (from ISBI2012) of an unnormalized (raw counts) overlap matrix
 
-	Can also return split and/or merge error separately ASSUMING that the "ground-truth"
+	Can also return split and/or merge error separately assuming that the "ground-truth"
 	segmentation is represented in the 2nd axis (columns)
 	
 	In order to use multiple alpha values, pass in an np array of the desired values
@@ -140,7 +146,7 @@ def om_variation_score(om, alpha=0.5, merge_score=False, split_score=False):
 	col_counts = np.array(om.sum(1)) #t_j * N
 	row_counts = np.array(om.sum(0)) #s_i * N
 
-	#for float division below (float64)
+	#float conversion for division below (float64)
 	N = float( col_counts.sum() )
 
 	#implicitly converts to float64
@@ -200,8 +206,8 @@ def om_variation_information(om, merge_err=False, split_err=False):
 	rows, cols, vals = sp.find(om)
 	vals = vals / N #p_ij
 
-	split_error = np.sum( cy.om_VI_byaxis( rows, vals, t_j.ravel() ) )
-	merge_error = np.sum( cy.om_VI_byaxis( cols, vals, s_i.ravel() ) )
+	split_error = np.sum( cy.om_VI_byaxis( cols, vals, s_i.ravel() ) )
+	merge_error = np.sum( cy.om_VI_byaxis( rows, vals, t_j.ravel() ) )
 
 	full_error = split_error + merge_error
 
@@ -236,6 +242,7 @@ def foreground_restriction(seg1, seg2):
 
 def om_score(om_score_function, score_name,
 	om, merge_score=False, split_score=False, alpha=0.5):
+	'''Runs a score function, times the calculation, and returns the result'''
 	
 	print "Calculating {}...".format(score_name)
 	start = timeit.default_timer()
@@ -247,6 +254,7 @@ def om_score(om_score_function, score_name,
 
 def om_error(om_error_function, error_name,
 	om, merge_err=False, split_err=False):
+	'''Runs an error function, times the calculation, and returns the result'''
 
 	print "Calculating {}...".format(error_name)
 	start = timeit.default_timer()
@@ -258,7 +266,7 @@ def om_error(om_error_function, error_name,
 
 def seg_score(om_score_function, score_name, 
 	seg1, seg2, merge_score=False, split_score=False, alpha=0.5):
-	'''Higher-level function which handles segmentations'''
+	'''High-level function which handles segmentations'''
 
 	om = calc_overlap_matrix(seg1, seg2)
 
@@ -269,7 +277,7 @@ def seg_score(om_score_function, score_name,
 
 def seg_error(om_error_function, error_name,
 	seg1, seg2, merge_err=False, split_err=False):
-	'''Higher-level function which handles segmentations'''
+	'''High-level function which handles segmentations'''
 
 	om = calc_overlap_matrix(seg1, seg2)
 
@@ -278,6 +286,9 @@ def seg_error(om_error_function, error_name,
 
 	return score
 	
+#=====================================================================
+#Functions for interactive module use
+
 def seg_rand_score(seg1, seg2, merge_score=False, split_score=False, alpha=0.5):
 	return seg_score(om_rand_score, "Rand Score",
 		seg1, seg2, merge_score, split_score, alpha)
@@ -294,13 +305,51 @@ def seg_variation_information(seg1, seg2, merge_err=False, split_err=False):
 	return seg_error(om_variation_information, "Variation of Information",
 		seg1, seg2, merge_err, split_err)
 
-def print_metrics(metrics):
+def seg_fr_rand_score(seg1,seg2, merge_score=False, split_score=False, alpha=0.5):
+	seg1, seg2 = foreground_restriction(seg1, seg2)
+	return seg_rand_score(seg1, seg2, merge_score, split_score, alpha)
 
+def seg_fr_rand_error(seg1, seg2, merge_error=False, split_error=False):
+	seg1, seg2 = foreground_restriction(seg1, seg2)
+	return seg_rand_error(seg1, seg2, merge_error, split_error)
+
+def seg_fr_variation_score(seg1, seg2, merge_score=False, split_score=False, alpha=0.5):
+	seg1, seg2 = foreground_restriction(seg1, seg2)
+	return seg_variation_score(seg1, seg2, merge_score, split_score, alpha=0.5)
+
+def seg_fr_variation_information(seg1, seg2, merge_error=False, split_error=False):
+	seg1, seg2 = foreground_restriction(seg1, seg2)
+	return seg_variation_information(seg1, seg2, merge_error, split_error)
+
+#=====================================================================
+#Utility Functions
+
+def print_metrics(metrics):
 	keys = metrics.keys()
 	keys.sort()
 
 	for key in keys:
 		print "{}: {}".format(key, metrics[key])
+
+def overflow_warning_check(n_val):
+	'''
+	The Python numbers.Integral class can represent more values than NumPy arrays,
+	so it's convenient to use the square/choose_two operation above to check for overflow
+	errors (often silent under Cython). 
+	'''
+
+	warning_string = ("WARNING: total number of pairs exceeds bit length.",
+		"\n You may see overflow errors.\n"
+
+	if DTYPE == 'uint64':
+		if n_val > 2 ** 64:
+			print warning_string
+	if DTYPE == 'uint32':
+		if n_val > 2 ** 32:
+			print warning_string
+
+#=====================================================================
+#Main function (script functionality)
 
 def main(seg1_fname, seg2_fname, 
 	calc_rand_score=False,
@@ -314,8 +363,8 @@ def main(seg1_fname, seg2_fname,
 	'''
 
 	print "Loading Data..."
-	seg1 = tifffile.imread(seg1_fname).astype('uint32')
-	seg2 = tifffile.imread(seg2_fname).astype('uint32')
+	seg1 = tifffile.imread(seg1_fname).astype(DTYPE)
+	seg2 = tifffile.imread(seg2_fname).astype(DTYPE)
 
 	results = {}
 

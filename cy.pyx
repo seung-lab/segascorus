@@ -13,18 +13,19 @@ import scipy.sparse as sp
 cimport cython
 
 from libc.math cimport log
-#@cython.boundscheck(False) # turn of bounds-checking for entire function
+#@cython.boundscheck(False) # turn off bounds-checking for entire function
 #@cython.wraparound(False)
 #@cython.nonecheck(False)
 
-DTYPE = np.uint32
-ctypedef np.uint32_t DTYPE_t
+DTYPE = np.uint64
+ctypedef np.uint64_t DTYPE_t
 
 cpdef np.ndarray[np.float64_t, ndim=1] shannon_entropy(np.ndarray[np.float64_t, ndim=1] arr):
     '''
     Calculates the Shannon Entropy for a given set of [0,1] (probability) values 
 
     Returns a 1d array of the same size as the input. The total H(S) can be computed by
+    a sum over the returned array
     '''
 
     sx = arr.shape[0]
@@ -55,6 +56,9 @@ cpdef np.ndarray[np.float64_t, ndim=1] om_VI_byaxis(np.ndarray[np.int32_t, ndim=
     - an array of the indices into the proper axis for each value
     - the array of values in the overlap matrix
     - the sum over the values in a particular row/col 
+
+    axis_indices is specified as int32 to fit with the result of sp.find
+    vals and axis sum should be (float) probability values
     '''
 
     sx = vals.shape[0]
@@ -77,7 +81,12 @@ cpdef np.ndarray[np.float64_t, ndim=1] om_VI_byaxis(np.ndarray[np.int32_t, ndim=
 
     return result
 
-cpdef np.ndarray[DTYPE_t, ndim=1] choose_two(np.ndarray[DTYPE_t] arr, ndim=1):
+cpdef np.ndarray[DTYPE_t, ndim=1] choose_two(np.ndarray[DTYPE_t, ndim=1] arr):
+    '''
+    Vectorized version of n choose 2 operation over a 1d numpy array
+
+    Does NOT report overflow errors
+    '''
 
     sx = arr.shape[0]
     
@@ -87,18 +96,21 @@ cpdef np.ndarray[DTYPE_t, ndim=1] choose_two(np.ndarray[DTYPE_t] arr, ndim=1):
     for i in xrange(sx):
 
         val = arr[i]
-        result[i] = (val / 2) * (val-1)
+        result[i] = int((val / 2.0) * (val-1))
 
     return result
 
-cpdef np.ndarray[DTYPE_t, ndim=3] relabel_segmentation(np.ndarray[np.uint32_t, ndim=3] seg, np.ndarray[np.uint32_t, ndim=1] relabelling):
+cpdef np.ndarray[DTYPE_t, ndim=3] relabel_segmentation(np.ndarray[DTYPE_t, ndim=3] seg, np.ndarray[DTYPE_t, ndim=1] relabelling):
+    '''
+    Takes a segmentation volume, along with an array encoding a mapping from segment ids (encoded by index) to new segment ids
+    (encoded by the value at that index), and maps the old values to the new throughout the volume
+    '''
 
     sz = seg.shape[0]
     sy = seg.shape[1]
     sx = seg.shape[2]
 
     cdef np.ndarray[DTYPE_t, ndim=3] result = np.empty((sz, sy, sx), dtype=DTYPE)
-
 
     for z in xrange(sz):
         for y in xrange(sy):
@@ -110,8 +122,10 @@ cpdef np.ndarray[DTYPE_t, ndim=3] relabel_segmentation(np.ndarray[np.uint32_t, n
 
 #%% depth first search
 #TO DO make option for 2d/3d
-cdef dfs(np.ndarray[np.uint32_t, ndim=3] seg,\
-        np.ndarray[np.uint32_t, ndim=3] seg2,\
+#This will be useful once I incorporate functions for 
+# mapping NN output to segmentations
+cdef dfs(np.ndarray[DTYPE_t, ndim=3] seg,\
+        np.ndarray[DTYPE_t, ndim=3] seg2,\
         np.ndarray[np.uint8_t,  ndim=3, cast=True] mask, \
         np.uint32_t relid, \
         np.uint32_t label, \
@@ -139,6 +153,7 @@ cdef dfs(np.ndarray[np.uint32_t, ndim=3] seg,\
     return seg2, mask
 
 #%% relabel by connectivity analysis
+#Another function designated to be modified for NN output
 cpdef np.ndarray[DTYPE_t, ndim=3] relabel1N(np.ndarray[DTYPE_t, ndim=3] seg):
     print 'relabel by connectivity analysis ...'
     # masker for visiting
@@ -167,7 +182,11 @@ cpdef np.ndarray[DTYPE_t, ndim=3] relabel1N(np.ndarray[DTYPE_t, ndim=3] seg):
 cpdef overlap_matrix(
     np.ndarray[DTYPE_t, ndim=1] seg1, 
     np.ndarray[DTYPE_t, ndim=1] seg2):
-    '''Calculates the overlap matrix between two segmentations of a volume'''
+    '''
+    Calculates the overlap matrix between two segmentations of a volume
+
+    At this point, mostly calls a scipy function, might not be useful here
+    '''
 
     cdef DTYPE_t seg1max = np.max(seg1)
     cdef DTYPE_t seg2max = np.max(seg2)
@@ -180,4 +199,92 @@ cpdef overlap_matrix(
     om_vals = np.ones(seg1.size, dtype=DTYPE) #value for now will always be one
     
     return sp.coo_matrix((om_vals, (seg1, seg2)), shape=(num_segs1, num_segs2)).tocsr()
+
+cdef list neighbors(int i, int j, int k, 
+    int si, int sj, int sk, bint two_dim):
+    '''Returns a list of 4-connectivity neighbors within a 2d image'''
+
+    # Init
+    cdef list res = []
+    cdef int[3] orig = (i, j, k)
+    cdef int[3] shape = (si, sj, sk)
+
+    #Index order: z,y,x
+    cdef int dim
+
+    cdef int[2] twod_dims = (1,2)
+    cdef int[3] threed_dims = (0,1,2)
+
+    cdef int[3] candidate
+    
+    for dim in threed_dims:
+
+        candidate = (orig[0], orig[1], orig[2])
+        candidate[dim] = candidate[dim] + 1
+
+        if candidate[dim] < shape[dim]:
+            res.append(candidate)
+
+        candidate = (orig[0], orig[1], orig[2])
+        candidate[dim] = candidate[dim] - 1
+
+        if 0 <= candidate[dim]:
+            res.append(candidate)
+
+    return res
+
+cdef bint all_equal(DTYPE_t[:] arr, int length, DTYPE_t value):
+    '''Faster test for "all({arr}=={value})" within cython'''
+
+    cdef int i = 0
+    while i < length:
+        if arr[i] != value:
+            return False
+        i += 1
+    return True
+
+cpdef np.ndarray[DTYPE_t, ndim=3] thin_boundary(np.ndarray[DTYPE_t, ndim=3] vol, bint twodim):
+    '''
+    Returns a copy of the passed volume with one pixel of boundary pixels
+    from each nonzero compartment removed for either 2d or 3d connectivity.
+
+    2d connectivity yields 4-connectivity
+    3d connectivity yields 6-connectivity
+    '''
+
+    s0 = vol.shape[0]
+    s1 = vol.shape[1]
+    s2 = vol.shape[2]
+
+    #Init
+    cdef np.ndarray[DTYPE_t, ndim=3] res = np.empty((s0, s1, s2), dtype=DTYPE)
+    cdef int z,y,x, num_neighbors
+    cdef list neighbor_indices
+    cdef DTYPE_t val
+    #a structure holding the maximum number of neighbors for 3d connectivity
+    cdef DTYPE_t[6] neighbor_values = (0,0,0,0,0,0)
+
+    for z in xrange(s0):
+        for y in xrange(s1):
+            for x in xrange(s2):
+
+                val = vol[z,y,x]
+                #Find indices of neighbors
+                neighbor_indices = neighbors(z,y,x, s0,s1,s2, twodim)
+
+                #Find their values
+                num_neighbors = len(neighbor_indices)
+                for i in xrange(num_neighbors):
+                    neighbor_values[i] = vol[
+                        neighbor_indices[i][0],
+                        neighbor_indices[i][1],
+                        neighbor_indices[i][2]]
+
+                #Assign new label according to collection of neighbor
+                # values
+                if all_equal(neighbor_values, num_neighbors, val):
+                    res[z,y,x] = val
+                else:
+                    res[z,y,x] = 0
+    return res
 
