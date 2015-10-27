@@ -28,12 +28,14 @@ Inputs:
 
 Dependencies:
 -------------
-[Cython](http://cython.org/)
-[python.tifffile](https://pypi.python.org/pypi/tifffile)
-[NumPy](http://www.numpy.org/)
-[Scipy](http://www.scipy.org/)
+|Library|
+|:-----:|
+|[Cython](http://cython.org/)|
+|[python.tifffile](https://pypi.python.org/pypi/tifffile)|
+|[NumPy](http://www.numpy.org/)|
+|[Scipy](http://www.scipy.org/)|
 
 Installation (compiling Cython module):
----------------------------------------
+-------------
     make
 
