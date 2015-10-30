@@ -62,8 +62,8 @@ def om_rand_score(om, alpha=0.5, merge_score=False, split_score=False):
 	In order to use multiple alpha values, pass in an np.array of the desired values
 	'''
 
-	col_counts = om.sum(1) #t_j * N
-	row_counts = om.sum(0) #s_i * N
+	col_counts = om.sum(0) #t_j * N
+	row_counts = om.sum(1) #s_i * N
 
 	#for float division below
 	N = float( col_counts.sum() )
@@ -99,8 +99,8 @@ def om_rand_error(om, merge_error=False, split_error=False):
 
 	#Converting to np.array makes ravel work properly
 	# (sp version seems buggy)
-	col_counts = np.array( om.sum(1) )
-	row_counts = np.array( om.sum(0) )
+	col_counts = np.array( om.sum(0) )
+	row_counts = np.array( om.sum(1) )
 
 	#for float division below
 	N = float(col_counts.sum())
@@ -108,8 +108,8 @@ def om_rand_error(om, merge_error=False, split_error=False):
 	#TP - True Positive pairs
 	#FP - False Positive pairs
 	#FN - False Negative pairs
-	TPplusFP = np.sum(cy.choose_two( col_counts.ravel() ))
-	TPplusFN = np.sum(cy.choose_two( row_counts.ravel() ))
+	TPplusFP = np.sum(cy.choose_two( row_counts.ravel() ))
+	TPplusFN = np.sum(cy.choose_two( col_counts.ravel() ))
 
 	p_ij_vals = cy.choose_two( np.copy(om.data) )
 	TP = np.sum(p_ij_vals)
@@ -143,8 +143,8 @@ def om_variation_score(om, alpha=0.5, merge_score=False, split_score=False):
 
 	#Transforming to np.array makes ravel work properly
 	# (sp version seems buggy)
-	col_counts = np.array(om.sum(1)) #t_j * N
-	row_counts = np.array(om.sum(0)) #s_i * N
+	col_counts = np.array( om.sum(0) ) #t_j * N
+	row_counts = np.array( om.sum(1) ) #s_i * N
 
 	#float conversion for division below (float64)
 	N = float( col_counts.sum() )
@@ -192,8 +192,8 @@ def om_variation_information(om, merge_error=False, split_error=False):
 
 	#Transforming to np.array makes ravel work properly
 	# (sp version seems buggy)
-	col_counts = np.array(om.sum(1)) #t_j * N
-	row_counts = np.array(om.sum(0)) #s_i * N
+	col_counts = np.array( om.sum(0) ) #t_j * N
+	row_counts = np.array( om.sum(1) ) #s_i * N
 
 	#for float division below (float64)
 	N = float( col_counts.sum() )
@@ -206,8 +206,8 @@ def om_variation_information(om, merge_error=False, split_error=False):
 	rows, cols, vals = sp.find(om)
 	vals = vals / N #p_ij
 
-	split_err = np.sum( cy.om_VI_byaxis( cols, vals, s_i.ravel() ) )
-	merge_err = np.sum( cy.om_VI_byaxis( rows, vals, t_j.ravel() ) )
+	split_err = np.sum( cy.om_VI_byaxis( cols, vals, t_j.ravel() ) )
+	merge_err = np.sum( cy.om_VI_byaxis( rows, vals, s_i.ravel() ) )
 
 	full_err = split_err + merge_err
 
