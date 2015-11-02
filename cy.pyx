@@ -45,17 +45,17 @@ cpdef np.ndarray[np.float64_t, ndim=1] shannon_entropy(np.ndarray[np.float64_t, 
 
     return result
 
-cpdef np.ndarray[np.float64_t, ndim=1] om_VI_byaxis(np.ndarray[np.int32_t, ndim=1] axis_indices,
+cpdef np.ndarray[np.float64_t, ndim=1] conditional_entropy(np.ndarray[np.int32_t, ndim=1] axis_indices,
     np.ndarray[np.float64_t, ndim=1] vals,
     np.ndarray[np.float64_t, ndim=1] axis_sum):
     '''
-    The Variation of Information can be split between split error and merge error, yet
-     the calculation of each is the same for a specific axis (row/col respectively). This function calculates
-     the VI terms for a type of error (split/merge) given
+    The Variation of Information can be split between split error and merge error, by
+    means of calculating the conditional entropy of one segmentation given the other.
+    This requires 
 
-    - an array of the indices into the proper axis for each value
-    - the array of values in the overlap matrix
-    - the sum over the values in a particular row/col 
+    - an array of the indices into the proper axis for each p_ij value
+    - a 1D array of p_ij values in the overlap matrix
+    - the sum over the values in a particular row/col (s_i or t_j) 
 
     axis_indices is specified as int32 to fit with the result of sp.find
     vals and axis sum should be (float) probability values

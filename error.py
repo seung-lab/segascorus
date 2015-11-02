@@ -52,9 +52,9 @@ def choose_two(n):
 	# = (n * (n-1)) / 2.0, with fewer overflows
 	return (n / 2.0) * (n-1)
 
-def om_rand_score(om, alpha=0.5, merge_score=False, split_score=False):
+def om_rand_f_score(om, alpha=0.5, merge_score=False, split_score=False):
 	'''
-	Calculates the rand SCORE (from ISBI2012) of an unnormalized (raw counts) overlap matrix
+	Calculates the Rand F-Score (from ISBI2012) of an unnormalized (raw counts) overlap matrix
 
 	Can also return split and/or merge error separately assuming that the "ground-truth"
 	segmentation is represented in the 2nd axis (columns)
@@ -131,9 +131,9 @@ def om_rand_error(om, merge_error=False, split_error=False):
 	else:
 		return full_err
 
-def om_variation_score(om, alpha=0.5, merge_score=False, split_score=False):
+def om_variation_f_score(om, alpha=0.5, merge_score=False, split_score=False):
 	'''
-	Calculates the variation of information SCORE (from ISBI2012) of an unnormalized (raw counts) overlap matrix
+	Calculates the variation of information F-Score (from ISBI2012) of an unnormalized (raw counts) overlap matrix
 
 	Can also return split and/or merge error separately assuming that the "ground-truth"
 	segmentation is represented in the 2nd axis (columns)
@@ -206,8 +206,8 @@ def om_variation_information(om, merge_error=False, split_error=False):
 	rows, cols, vals = sp.find(om)
 	vals = vals / N #p_ij
 
-	split_err = np.sum( cy.om_VI_byaxis( cols, vals, t_j.ravel() ) )
-	merge_err = np.sum( cy.om_VI_byaxis( rows, vals, s_i.ravel() ) )
+	split_err = np.sum( cy.conditional_entropy( cols, vals, t_j.ravel() ) )
+	merge_err = np.sum( cy.conditional_entropy( rows, vals, s_i.ravel() ) )
 
 	full_err = split_err + merge_err
 
@@ -409,18 +409,18 @@ def main(seg1_fname, seg2_fname,
 		om_2d = calc_overlap_matrix(seg1_2d, seg2_2d)
 
 	if calc_rand_score:
-		(f, m, s) = om_score(om_rand_score, "Rand Score", om, True, True, 0.5)
+		(f, m, s) = om_score(om_rand_f_score, "Rand F-Score", om, True, True, 0.5)
 
-		results['Rand Score Full'] = f
-		results['Rand Score Split'] = s
-		results['Rand Score Merge'] = m
+		results['Rand F Score Full'] = f
+		results['Rand F Score Split'] = s
+		results['Rand F Score Merge'] = m
 
 	if calc_2d_rand_score:
-		(f, m, s) = om_score(om_rand_score, "Rand Score", om_2d, True, True, 0.5)
+		(f, m, s) = om_score(om_rand_f_score, "Rand F-Score", om_2d, True, True, 0.5)
 
-		results['2D Rand Score Full'] = f
-		results['2D Rand Score Split'] = s
-		results['2D Rand Score Merge'] = m
+		results['2D Rand F Score Full'] = f
+		results['2D Rand F Score Split'] = s
+		results['2D Rand F Score Merge'] = m
 
 	if calc_rand_error:
 		(f, m, s) =  om_error(om_rand_error, "Rand Error", om, True, True)
@@ -438,18 +438,18 @@ def main(seg1_fname, seg2_fname,
 		results['2D Rand Error Merge'] = m	
 
 	if calc_variation_score:
-		(f, m, s) = om_score(om_variation_score, "Variation Score", om, True, True, 0.5)
+		(f, m, s) = om_score(om_variation_f_score, "Variation F-Score", om, True, True, 0.5)
 
-		results['Variation Score Full'] = f
-		results['Variation Score Split'] = s
-		results['Variation Score Merge'] = m
+		results['Variation F Score Full'] = f
+		results['Variation F Score Split'] = s
+		results['Variation F Score Merge'] = m
 
 	if calc_2d_variation_score:
-		(f, m, s) = om_score(om_variation_score, "Variation Score", om_2d, True, True, 0.5)
+		(f, m, s) = om_score(om_variation_f_score, "Variation F-Score", om_2d, True, True, 0.5)
 
-		results['2D Variation Score Full'] = f
-		results['2D Variation Score Split'] = s
-		results['2D Variation Score Merge'] = m
+		results['2D Variation F Score Full'] = f
+		results['2D Variation F Score Split'] = s
+		results['2D Variation F Score Merge'] = m
 
 	if calc_variation_information:
 		(f, m, s) =  om_error(om_variation_information, "Variation of Information", om, True, True)
@@ -481,9 +481,9 @@ if __name__ == '__main__':
 
 	#NOTE: "No" args store whether or not to calc the metric
 	# the 'no' part of the flag is for command-line semantics
-	parser.add_argument('-no_rs','-no_rand_score',
+	parser.add_argument('-no_rfs','-no_rand_f_score',
 		default=True, action='store_true')
-	parser.add_argument('-rs2d','-calc_2d_rand_score',
+	parser.add_argument('-rfs2d','-calc_2d_rand_f_score',
 		default=False, action='store_true')
 
 	parser.add_argument('-no_re','-no_rand_error',
@@ -491,9 +491,9 @@ if __name__ == '__main__':
 	parser.add_argument('-re2d','-calc_2d_rand_error',
 		default=False, action='store_true')
 
-	parser.add_argument('-no_vs','-no_variation_score',
+	parser.add_argument('-no_vifs','-no_variation_f_score',
 		default=True, action='store_false')
-	parser.add_argument('-vs2d','-calc_2d_variation_score',
+	parser.add_argument('-vifs2d','-calc_2d_variation_f_score',
 		default=False, action='store_true')
 
 	parser.add_argument('-no_vi','-no_variation_information',
@@ -508,12 +508,12 @@ if __name__ == '__main__':
 
 	main(args.seg1_filename,
 	     args.seg2_filename,
-	     args.no_rs,
-	     args.rs2d,
+	     args.no_rfs,
+	     args.rfs2d,
 	     args.no_re,
 	     args.re2d,
-	     args.no_vs,
-	     args.vs2d,
+	     args.no_vifs,
+	     args.vifs2d,
 	     args.no_vi,
 	     args.vi2d,
 	     args.no_fr)
