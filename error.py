@@ -294,7 +294,8 @@ def om_error(om_error_function, error_name,
 	return score
 
 def seg_score(om_score_function, score_name, 
-	seg1, seg2, merge_score=False, split_score=False, alpha=0.5):
+	seg1, seg2, merge_score=False, split_score=False, 
+	alpha=0.5, split0=True):
 	'''High-level function which handles segmentations'''
 
 	om = calc_overlap_matrix(seg1, seg2)
@@ -305,7 +306,7 @@ def seg_score(om_score_function, score_name,
 	return score
 
 def seg_error(om_error_function, error_name,
-	seg1, seg2, merge_err=False, split_err=False):
+	seg1, seg2, merge_err=False, split_err=False, split0=True):
 	'''High-level function which handles segmentations'''
 
 	om = calc_overlap_matrix(seg1, seg2)
@@ -318,44 +319,57 @@ def seg_error(om_error_function, error_name,
 #=====================================================================
 #Functions for interactive module use
 
-def seg_rand_score(seg1, seg2, merge_score=False, split_score=False, alpha=0.5):
+def seg_rand_score(seg1, seg2, merge_score=False, split_score=False, 
+	alpha=0.5, split0=True):
+	'''Computes the Rand F Score for a segmentation'''
 	return seg_score(om_rand_score, "Rand Score",
-		seg1, seg2, merge_score, split_score, alpha)
+		seg1, seg2, merge_score, split_score, alpha, split0)
 
-def seg_rand_error(seg1, seg2, merge_err=False, split_err=False):
+def seg_rand_error(seg1, seg2, merge_err=False, split_err=False, split0=True):
+	'''Computes the Rand Error for a segmentation'''
 	return seg_error(om_rand_error, "Rand Error",
-		seg1, seg2, merge_err, split_err)
+		seg1, seg2, merge_err, split_err, split0)
 
-def seg_2d_rand_error(seg1, seg2, merge_err=False, split_err=False):
+def seg_variation_score(seg1, seg2, merge_score=False, split_score=False, 
+	alpha=0.5, split0=True):
+	'''Computes the Variation of Information F Score for a segmentation'''
+	return seg_score(om_variation_score, "VI Score",
+		seg1, seg2, merge_score, split_score, alpha, split0)
+
+def seg_variation_information(seg1, seg2, merge_err=False, split_err=False, split0=True):
+	'''Computes the Variation of Information for a segmentation'''
+	return seg_error(om_variation_information, "Variation of Information",
+		seg1, seg2, merge_err, split_err, split0)
+
+def seg_fr_rand_score(seg1,seg2, merge_score=False, split_score=False, 
+	alpha=0.5, split0=True):
+	'''Computes the Rand F Score for a segmentation w/ foreground restriction'''
+	seg1, seg2 = foreground_restriction(seg1, seg2)
+	return seg_rand_score(seg1, seg2, merge_score, split_score, alpha, split0)
+
+def seg_fr_rand_error(seg1, seg2, merge_error=False, split_error=False, split0=True):
+	'''Computes the Rand Error for a segmentation w/ foreground restriction'''
+	seg1, seg2 = foreground_restriction(seg1, seg2)
+	return seg_rand_error(seg1, seg2, merge_error, split_error, split0)
+
+def seg_fr_variation_score(seg1, seg2, merge_score=False, split_score=False, 
+	alpha=0.5, split0=True):
+	'''Computes the Variation of Information F Score for a segmentation w/ foreground restriction'''
+	seg1, seg2 = foreground_restriction(seg1, seg2)
+	return seg_variation_score(seg1, seg2, merge_score, split_score, alpha=0.5, split0)
+
+def seg_fr_variation_information(seg1, seg2, merge_error=False, split_error=False, split0=True):
+	'''Computes the Variation of Information for a segmentation w/ foreground restriction'''
+	seg1, seg2 = foreground_restriction(seg1, seg2)
+	return seg_variation_information(seg1, seg2, merge_error, split_error, split0)
+
+#== 2d versions ==#
+def seg_2d_rand_error(seg1, seg2, merge_err=False, split_err=False, split0=True):
 
 	print "Relabelling segmentations for 2d comparison"
 	seg1, seg2 = relabel2d(seg1, seg2)
 
-	return seg_rand_error(seg1, seg2, merge_err, split_err)
-
-def seg_variation_score(seg1, seg2, merge_score=False, split_score=False, alpha=0.5):
-	return seg_score(om_variation_score, "VI Score",
-		seg1, seg2, merge_score, split_score, alpha)
-
-def seg_variation_information(seg1, seg2, merge_err=False, split_err=False):
-	return seg_error(om_variation_information, "Variation of Information",
-		seg1, seg2, merge_err, split_err)
-
-def seg_fr_rand_score(seg1,seg2, merge_score=False, split_score=False, alpha=0.5):
-	seg1, seg2 = foreground_restriction(seg1, seg2)
-	return seg_rand_score(seg1, seg2, merge_score, split_score, alpha)
-
-def seg_fr_rand_error(seg1, seg2, merge_error=False, split_error=False):
-	seg1, seg2 = foreground_restriction(seg1, seg2)
-	return seg_rand_error(seg1, seg2, merge_error, split_error)
-
-def seg_fr_variation_score(seg1, seg2, merge_score=False, split_score=False, alpha=0.5):
-	seg1, seg2 = foreground_restriction(seg1, seg2)
-	return seg_variation_score(seg1, seg2, merge_score, split_score, alpha=0.5)
-
-def seg_fr_variation_information(seg1, seg2, merge_error=False, split_error=False):
-	seg1, seg2 = foreground_restriction(seg1, seg2)
-	return seg_variation_information(seg1, seg2, merge_error, split_error)
+	return seg_rand_error(seg1, seg2, merge_err, split_err, split0)
 
 #=====================================================================
 #Utility Functions
@@ -386,6 +400,12 @@ def overflow_warning_check(n_val):
 
 def import_tif(filename):
     return tifffile.imread(filename).astype(DTYPE)
+
+def inport_h5(filename):
+    import h5py
+
+    f = h5py.File(filename)
+    return f['/main'].value.astype(DTYPE)
 
 #=====================================================================
 #Main function (script functionality)
