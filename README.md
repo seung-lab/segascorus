@@ -11,6 +11,13 @@ features a few customizable options. These include:
 - Foreground Restriction- computing error over voxels where the
   second segmentation (presumed to be ground truth) != 0.
   This is applied as a default option.
+
+- Splitting '0' Segment into Singletons- The segment id of 0 often
+  corresponds to a background segment, however it can also represent
+  singleton voxels after processing by watershed. This option re-splits
+  all segments labelled 0 into new segment ids, recovering the singletons.
+  This is applied as a default option, and disabled by -no_split0
+
 - Boundary Thinning- (not complete yet)
 
 Inputs:
@@ -20,11 +27,20 @@ Inputs:
  This should be the "ground truth" segmentation if applicable
 - Foreground Restriction (optional flag -nofr, default=on)
 - Boundary Thinning (not complete yet)
+- Split 0 Segment (optional flag -no_split0, default=on)
+
 - Metric Types
- - Rand Score - ISBI 2012 Error Metric
+  (all calculated by default)
+ - Rand F Score - ISBI 2012 Error Metric
  - Rand Error - 1 - RandIndex
- - Variation Score - ISBI 2012 Information Theoretic Error Metric
+ - Variation F Score - ISBI 2012 Information Theoretic Error Metric
  - Variation of Information
+- 2D Metric Types
+  (not calculated by default)
+	- Rand F Score         -rfs2d
+	- Rand Error           -re2d
+	- Variation F Score    -vifs2d
+	- Variation of Info    -vi2d
 
 
 Dependencies:
