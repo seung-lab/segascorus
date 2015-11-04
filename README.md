@@ -10,6 +10,7 @@ features a few customizable options. These include:
 
 - Foreground Restriction- computing error over voxels where the
   second segmentation (presumed to be ground truth) != 0.
+  This is applied as a default option.
 - Boundary Thinning- (not complete yet)
 
 Inputs:
@@ -17,7 +18,7 @@ Inputs:
 - First Segmentation File (seg1, as .tif file)
 - Second Segmentation File (seg2, as .tif file)
  This should be the "ground truth" segmentation if applicable
-- Foreground Restriction (flag, optional)
+- Foreground Restriction (optional flag -nofr, default=on)
 - Boundary Thinning (not complete yet)
 - Metric Types
  - Rand Score - ISBI 2012 Error Metric
