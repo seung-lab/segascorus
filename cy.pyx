@@ -45,17 +45,18 @@ cpdef np.ndarray[np.float64_t, ndim=1] shannon_entropy(np.ndarray[np.float64_t, 
 
     return result
 
-cpdef np.ndarray[np.float64_t, ndim=1] conditional_entropy(np.ndarray[np.int32_t, ndim=1] axis_indices,
-    np.ndarray[np.float64_t, ndim=1] vals,
+cpdef np.ndarray[np.float64_t, ndim=1] conditional_entropy(np.ndarray[np.float64_t, ndim=1] vals,
+    np.ndarray[np.int32_t, ndim=1] axis_indices,
     np.ndarray[np.float64_t, ndim=1] axis_sum):
     '''
-    The Variation of Information can be split between split error and merge error, by
-    means of calculating the conditional entropy of one segmentation given the other.
-    This requires 
+    Calculates the Conditional Shannon Entropy for values of a joint distribution (vals),
+    along with the values of a marginal distribution (axis_sum), and the indices of the
+    marginal distribution containing the joint values (axis_indices)
 
-    - an array of the indices into the proper axis for each p_ij value
-    - a 1D array of p_ij values in the overlap matrix
-    - the sum over the values in a particular row/col (s_i or t_j) 
+    Another way to think about these arguments is the following:
+    - a 1D array of p_ij values in the overlap matrix (vals)
+    - an array of the indices into the proper axis for each p_ij value (axis_indices)
+    - the sum over the values in a particular row/col (s_i or t_j: axis_sum) 
 
     axis_indices is specified as int32 to fit with the result of sp.find
     vals and axis sum should be (float) probability values
@@ -83,7 +84,7 @@ cpdef np.ndarray[np.float64_t, ndim=1] conditional_entropy(np.ndarray[np.int32_t
 
 cpdef np.ndarray[DTYPE_t, ndim=1] choose_two(np.ndarray[DTYPE_t, ndim=1] arr):
     '''
-    Vectorized version of n choose 2 operation over a 1d numpy array
+    Vectorized version of (n choose 2) operation over a 1d numpy array
 
     Does NOT report overflow errors
     '''
@@ -120,16 +121,26 @@ cpdef np.ndarray[DTYPE_t, ndim=3] relabel_segmentation(np.ndarray[DTYPE_t, ndim=
 
     return result
 
-#%% depth first search
 #TO DO make option for 2d/3d
-#This will be useful once I incorporate functions for 
+#This will also be useful once I incorporate functions for 
 # mapping NN output to segmentations
-cdef dfs(np.ndarray[DTYPE_t, ndim=3] seg,\
+cdef dfs(np.ndarray[DTYPE_t, ndim=3] orig_seg,\
         np.ndarray[DTYPE_t, ndim=3] seg2,\
         np.ndarray[np.uint8_t,  ndim=3, cast=True] mask, \
         np.uint32_t relid, \
         np.uint32_t label, \
         int z, int y, int x):
+    '''
+    Performs an iteration of depth-first search over voxels with
+    the same segment id. 
+
+    It will also stay within the limits of a mask volume,
+    where True indicates either that the search should not go to this location,
+    or it already has traversed it.
+
+    Currently hard-coded to follow a 2d traversal, though this will be
+    modified when enough people complain.
+    '''
     cdef list seeds = []
     seeds.append((z,y,x))
     while seeds:
@@ -142,21 +153,28 @@ cdef dfs(np.ndarray[DTYPE_t, ndim=3] seg,\
             # seeds.append((z+1,y,x))
         # if z-1>=0    and seg[z-1,y,x] == label and not mask[z-1,y,x] :
             # seeds.append((z-1,y,x))
-        if y+1<seg.shape[1] and seg[z,y+1,x] == label and not mask[z,y+1,x] :
+        if y+1<orig_seg.shape[1] and orig_seg[z,y+1,x] == label and not mask[z,y+1,x] :
             seeds.append((z,y+1,x))
-        if y-1>=0    and seg[z,y-1,x] == label and not mask[z,y-1,x] :
+        if y-1>=0    and orig_seg[z,y-1,x] == label and not mask[z,y-1,x] :
             seeds.append((z,y-1,x))          
-        if x+1<seg.shape[2] and seg[z,y,x+1] == label and not mask[z,y,x+1] :
+        if x+1<orig_seg.shape[2] and orig_seg[z,y,x+1] == label and not mask[z,y,x+1] :
             seeds.append((z,y,x+1))
-        if x-1>=0    and seg[z,y,x-1] == label and not mask[z,y,x-1] :
+        if x-1>=0    and orig_seg[z,y,x-1] == label and not mask[z,y,x-1] :
             seeds.append((z,y,x-1))       
     return seg2, mask
 
-#%% relabel by connectivity analysis
 #Another function designated to be modified for NN output
 cpdef np.ndarray[DTYPE_t, ndim=3] relabel1N(np.ndarray[DTYPE_t, ndim=3] seg):
-    print 'relabel by connectivity analysis ...'
-    # masker for visiting
+    '''
+    Modifies the labels of a segmentation to range between 1 and N
+    where N is the number of nonzero segments. 
+
+    Currently, the dfs function used here only traverses the segmentation
+    in 2d, so this results layers of 2d segments, and with N higher
+    than the original number of segments.
+
+    This function also ignores the '0' segment, leaving it as passed in.
+    ''' 
     cdef np.ndarray[np.uint8_t,    ndim=3, cast=True] mask 
     mask = (seg==0)
     
@@ -164,7 +182,7 @@ cpdef np.ndarray[DTYPE_t, ndim=3] relabel1N(np.ndarray[DTYPE_t, ndim=3] seg):
     sy = seg.shape[1]
     sx = seg.shape[2]
 
-    cdef np.ndarray[DTYPE_t, ndim=3] seg2 = np.zeros((sz, sy, sx), dtype=DTYPE)   # change to np.zeros ?
+    cdef np.ndarray[DTYPE_t, ndim=3] seg2 = np.zeros((sz, sy, sx), dtype=DTYPE)
     # relabel ID
     cdef np.uint32_t relid = 0
     cdef np.uint32_t z,y,x

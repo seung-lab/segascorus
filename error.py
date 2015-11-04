@@ -8,6 +8,8 @@ features a few customizable options. These include:
 
 - Foreground Restriction- computing error over voxels where the
   second segmentation (presumed to be ground truth) != 0.
+  This is applied as a default option.
+
 - Boundary Thinning- (not complete yet)
 
 Inputs
@@ -15,7 +17,7 @@ Inputs
 	- First Segmentation File (seg1, as .tif file)
 	- Second Segmentation File (seg2, as .tif file)
 	  This should be the "ground truth" segmentation if applicable
-	- Foreground Restriction (optional flag -fr, default=true)
+	- Foreground Restriction (optional flag -nofr, default=on)
 	- Boundary Thinning (optional flag -bt, not complete yet)
 	- Metric Types
 		- Rand Score - ISBI 2012 Error Metric
@@ -42,6 +44,7 @@ import scipy.sparse as sp
 #Cython functions
 import cy
 
+#This should be an int type, and consistent with cy.pyx
 DTYPE='uint64'
 
 def choose_two(n):
@@ -60,12 +63,15 @@ def om_rand_f_score(om, alpha=0.5, merge_score=False, split_score=False):
 	segmentation is represented in the 2nd axis (columns)
 
 	In order to use multiple alpha values, pass in an np.array of the desired values
+
+	alpha corresponds to the weight of the split score, where 1-alpha
+	refers to the merge score
 	'''
 
 	col_counts = om.sum(0) #t_j * N
 	row_counts = om.sum(1) #s_i * N
 
-	#for float division below
+	#float conversion for division below
 	N = float( col_counts.sum() )
 
 	#implicit conversion to float64
@@ -139,6 +145,9 @@ def om_variation_f_score(om, alpha=0.5, merge_score=False, split_score=False):
 	segmentation is represented in the 2nd axis (columns)
 	
 	In order to use multiple alpha values, pass in an np array of the desired values
+
+	alpha corresponds to the weight of the split score, where 1-alpha
+	refers to the merge score
 	'''
 
 	#Transforming to np.array makes ravel work properly
@@ -206,8 +215,8 @@ def om_variation_information(om, merge_error=False, split_error=False):
 	rows, cols, vals = sp.find(om)
 	vals = vals / N #p_ij
 
-	split_err = np.sum( cy.conditional_entropy( cols, vals, t_j.ravel() ) )
-	merge_err = np.sum( cy.conditional_entropy( rows, vals, s_i.ravel() ) )
+	split_err = np.sum( cy.conditional_entropy( vals, cols, t_j.ravel() ) )
+	merge_err = np.sum( cy.conditional_entropy( vals, rows, s_i.ravel() ) )
 
 	full_err = split_err + merge_err
 
@@ -233,6 +242,7 @@ def calc_overlap_matrix(seg1, seg2):
 
 def relabel2d(seg1, seg2):
 	'''Relabels segmentations to be 2d for 2d-based error metrics'''
+	print "Relabelling segments for 2d metrics..."
 	return cy.relabel1N(seg1), cy.relabel1N(seg2)
 
 def foreground_restriction(seg1, seg2):
@@ -346,7 +356,7 @@ def overflow_warning_check(n_val):
 	'''
 	The Python numbers.Integral class can represent more values than NumPy arrays,
 	so it's convenient to use the square/choose_two operation above to check for overflow
-	errors (often silent under Cython). 
+	errors (which can be silent bugs under Cython). 
 	'''
 
 	warning_string = ("WARNING: total number of pairs exceeds bit length.",
@@ -374,7 +384,7 @@ def main(seg1_fname, seg2_fname,
 	calc_2d_variation_score=False,
 	calc_variation_information=True,
 	calc_2d_variation_information=False,
-	foreground_restricted=True,):
+	foreground_restricted=True):
 	'''
 	Script functionality, computes the overlap matrix, computes any specified metrics,
 	and prints the results nicely
@@ -386,15 +396,19 @@ def main(seg1_fname, seg2_fname,
 
 	results = {}
 
+	#Whether or not we plan to calc a 2d metric
 	calc_2d_metric = any((calc_2d_rand_score, calc_2d_rand_error,
 		calc_2d_variation_score, calc_2d_variation_information))
 
+	#Whether or not we plan to calc a 3d metric
 	calc_3d_metric = any((calc_rand_score, calc_rand_error,
 		calc_variation_score, calc_variation_information))
 
+	#relabelling segmentation for 2d metrics (if applicable)
 	if calc_2d_metric:
 		seg1_2d, seg2_2d = relabel2d(seg1, seg2)
 
+	#foreground restriction
 	if foreground_restricted:
 		if calc_3d_metric:
 			seg1, seg2 = foreground_restriction(seg1, seg2)
@@ -402,12 +416,14 @@ def main(seg1_fname, seg2_fname,
 		if calc_2d_metric:
 			seg1_2d, seg2_2d = foreground_restriction(seg1_2d, seg2_2d)
 
+	#Calculating the necessary overlap matrices for the
+	# desired output (2d vs. 3d)
 	if calc_3d_metric:
 		om = calc_overlap_matrix(seg1, seg2)
-
 	if calc_2d_metric:
 		om_2d = calc_overlap_matrix(seg1_2d, seg2_2d)
 
+	#Calculating each desired metric
 	if calc_rand_score:
 		(f, m, s) = om_score(om_rand_f_score, "Rand F-Score", om, True, True, 0.5)
 
@@ -416,7 +432,7 @@ def main(seg1_fname, seg2_fname,
 		results['Rand F Score Merge'] = m
 
 	if calc_2d_rand_score:
-		(f, m, s) = om_score(om_rand_f_score, "Rand F-Score", om_2d, True, True, 0.5)
+		(f, m, s) = om_score(om_rand_f_score, "2D Rand F-Score", om_2d, True, True, 0.5)
 
 		results['2D Rand F Score Full'] = f
 		results['2D Rand F Score Split'] = s
@@ -431,7 +447,7 @@ def main(seg1_fname, seg2_fname,
 
 	if calc_2d_rand_error:
 
-		(f, m, s) = om_error(om_rand_error, "Rand Error", om_2d, True, True)
+		(f, m, s) = om_error(om_rand_error, "2D Rand Error", om_2d, True, True)
 
 		results['2D Rand Error Full'] = f
 		results['2D Rand Error Split'] = s
@@ -445,7 +461,7 @@ def main(seg1_fname, seg2_fname,
 		results['Variation F Score Merge'] = m
 
 	if calc_2d_variation_score:
-		(f, m, s) = om_score(om_variation_f_score, "Variation F-Score", om_2d, True, True, 0.5)
+		(f, m, s) = om_score(om_variation_f_score, "2D Variation F-Score", om_2d, True, True, 0.5)
 
 		results['2D Variation F Score Full'] = f
 		results['2D Variation F Score Split'] = s
@@ -459,7 +475,7 @@ def main(seg1_fname, seg2_fname,
 		results['Variation of Information Merge'] = m
 
 	if calc_2d_variation_information:
-		(f, m, s) =  om_error(om_variation_information, "Variation of Information", om_2d, True, True)
+		(f, m, s) =  om_error(om_variation_information, "2D Variation of Information", om_2d, True, True)
 
 		results['2D Variation of Information Full'] = f
 		results['2D Variation of Information Split'] = s
