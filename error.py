@@ -356,7 +356,7 @@ def seg_fr_variation_score(seg1, seg2, merge_score=False, split_score=False,
 	alpha=0.5, split0=True):
 	'''Computes the Variation of Information F Score for a segmentation w/ foreground restriction'''
 	seg1, seg2 = foreground_restriction(seg1, seg2)
-	return seg_variation_score(seg1, seg2, merge_score, split_score, alpha=0.5, split0)
+	return seg_variation_score(seg1, seg2, merge_score, split_score, alpha, split0)
 
 def seg_fr_variation_information(seg1, seg2, merge_error=False, split_error=False, split0=True):
 	'''Computes the Variation of Information for a segmentation w/ foreground restriction'''
