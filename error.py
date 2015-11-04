@@ -10,6 +10,12 @@ features a few customizable options. These include:
   second segmentation (presumed to be ground truth) != 0.
   This is applied as a default option.
 
+- Splitting '0' Segment into Singletons- The segment id of 0 often
+  corresponds to a background segment, however it can also represent
+  singleton voxels after processing by watershed. This option re-splits
+  all segments labelled 0 into new segment ids, recovering the singletons.
+  This is applied as a default option, and disabled by -no_split0
+
 - Boundary Thinning- (not complete yet)
 
 Inputs
@@ -19,11 +25,20 @@ Inputs
 	  This should be the "ground truth" segmentation if applicable
 	- Foreground Restriction (optional flag -nofr, default=on)
 	- Boundary Thinning (optional flag -bt, not complete yet)
+	- Split 0 Segment (optional flag -no_split0, default=on)
+
 	- Metric Types
-		- Rand Score - ISBI 2012 Error Metric
+	  (these are all calculated by default)
+		- Rand F Score - ISBI 2012 Error Metric
 		- Rand Error - 1 - RandIndex
-		- Variation Score - ISBI 2012 Information Theoretic Error Metric
+		- Variation F Score - ISBI 2012 Information Theoretic Error Metric
 		- Variation of Information
+	- 2D Metric Types
+	  (not calculated by default)
+		- Rand F Score         -rfs2d
+		- Rand Error           -re2d
+		- Variation F Score    -vifs2d
+		- Variation of Info    -vi2d
 
 Main Outputs:
 
@@ -45,7 +60,7 @@ import scipy.sparse as sp
 import cy
 
 #This should be an int type, and consistent with cy.pyx
-DTYPE='uint64'
+DTYPE= cy.DTYPE
 
 def choose_two(n):
 	'''
@@ -229,12 +244,12 @@ def om_variation_information(om, merge_error=False, split_error=False):
 	else:
 		return full_err
 
-def calc_overlap_matrix(seg1, seg2):
+def calc_overlap_matrix(seg1, seg2, split_zeros):
 	'''Calculates the overlap matrix of two segmentations'''
 
 	print "Finding overlap matrix..."
 	start = timeit.default_timer()
-	om = cy.overlap_matrix( seg1.ravel(), seg2.ravel() )
+	om = cy.overlap_matrix( seg1.ravel(), seg2.ravel(), split_zeros )
 	end = timeit.default_timer()
 	print "Completed in %f seconds" % (end-start)
 
@@ -384,7 +399,8 @@ def main(seg1_fname, seg2_fname,
 	calc_2d_variation_score=False,
 	calc_variation_information=True,
 	calc_2d_variation_information=False,
-	foreground_restricted=True):
+	foreground_restricted=True,
+	split_0_segment=True):
 	'''
 	Script functionality, computes the overlap matrix, computes any specified metrics,
 	and prints the results nicely
@@ -419,9 +435,9 @@ def main(seg1_fname, seg2_fname,
 	#Calculating the necessary overlap matrices for the
 	# desired output (2d vs. 3d)
 	if calc_3d_metric:
-		om = calc_overlap_matrix(seg1, seg2)
+		om = calc_overlap_matrix(seg1, seg2, split_0_segment)
 	if calc_2d_metric:
-		om_2d = calc_overlap_matrix(seg1_2d, seg2_2d)
+		om_2d = calc_overlap_matrix(seg1_2d, seg2_2d, split_0_segment)
 
 	#Calculating each desired metric
 	if calc_rand_score:
@@ -517,8 +533,11 @@ if __name__ == '__main__':
 	parser.add_argument('-vi2d','-calc_2d_variation_information',
 		default=False, action='store_true')
 
-	parser.add_argument('-no_fr','-foreground_restriction',
+	parser.add_argument('-no_fr','-no_foreground_restriction',
 		default=True, action='store_false')
+	parser.add_argument('-no_split0','-dont_split_0_segment',
+		default=True, action='store_false')
+
 
 	args = parser.parse_args()
 
@@ -532,5 +551,6 @@ if __name__ == '__main__':
 	     args.vifs2d,
 	     args.no_vi,
 	     args.vi2d,
-	     args.no_fr)
+	     args.no_fr,
+	     args.no_split0)
 

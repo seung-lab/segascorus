@@ -17,6 +17,7 @@ from libc.math cimport log
 #@cython.wraparound(False)
 #@cython.nonecheck(False)
 
+#THIS SHOULD BE AN INT TYPE
 DTYPE = np.uint64
 ctypedef np.uint64_t DTYPE_t
 
@@ -26,6 +27,8 @@ cpdef np.ndarray[np.float64_t, ndim=1] shannon_entropy(np.ndarray[np.float64_t, 
 
     Returns a 1d array of the same size as the input. The total H(S) can be computed by
     a sum over the returned array
+
+    will return nan values if arr contains zeros
     '''
 
     sx = arr.shape[0]
@@ -33,6 +36,8 @@ cpdef np.ndarray[np.float64_t, ndim=1] shannon_entropy(np.ndarray[np.float64_t, 
     cdef np.ndarray[np.float64_t, ndim=1] result = np.empty((sx,), dtype=np.float64)
 
     cdef np.float64_t val
+    cdef int i
+
     for i in xrange(sx):
 
         val = arr[i]
@@ -60,6 +65,8 @@ cpdef np.ndarray[np.float64_t, ndim=1] conditional_entropy(np.ndarray[np.float64
 
     axis_indices is specified as int32 to fit with the result of sp.find
     vals and axis sum should be (float) probability values
+
+    will return nans if vals contains 0
     '''
 
     sx = vals.shape[0]
@@ -69,6 +76,7 @@ cpdef np.ndarray[np.float64_t, ndim=1] conditional_entropy(np.ndarray[np.float64
     cdef np.float64_t val
     cdef np.int32_t axis_index
     cdef int i
+
     for i in xrange(sx):
 
         val = vals[i]
@@ -86,6 +94,8 @@ cpdef np.ndarray[DTYPE_t, ndim=1] choose_two(np.ndarray[DTYPE_t, ndim=1] arr):
     '''
     Vectorized version of (n choose 2) operation over a 1d numpy array
 
+    Assumes values of the array are non-negative integers
+
     Does NOT report overflow errors
     '''
 
@@ -94,6 +104,8 @@ cpdef np.ndarray[DTYPE_t, ndim=1] choose_two(np.ndarray[DTYPE_t, ndim=1] arr):
     cdef np.ndarray[DTYPE_t, ndim=1] result = np.empty((sx,), dtype=DTYPE)
 
     cdef DTYPE_t val
+    cdef int i
+
     for i in xrange(sx):
 
         val = arr[i]
@@ -103,8 +115,10 @@ cpdef np.ndarray[DTYPE_t, ndim=1] choose_two(np.ndarray[DTYPE_t, ndim=1] arr):
 
 cpdef np.ndarray[DTYPE_t, ndim=3] relabel_segmentation(np.ndarray[DTYPE_t, ndim=3] seg, np.ndarray[DTYPE_t, ndim=1] relabelling):
     '''
-    Takes a segmentation volume, along with an array encoding a mapping from segment ids (encoded by index) to new segment ids
-    (encoded by the value at that index), and maps the old values to the new throughout the volume
+    Takes a segmentation volume, along with an array encoding 
+    a mapping from segment ids (encoded by index) to new segment ids
+    (encoded by the value at that index), and maps the old values 
+    to the new throughout the volume
     '''
 
     sz = seg.shape[0]
@@ -112,6 +126,8 @@ cpdef np.ndarray[DTYPE_t, ndim=3] relabel_segmentation(np.ndarray[DTYPE_t, ndim=
     sx = seg.shape[2]
 
     cdef np.ndarray[DTYPE_t, ndim=3] result = np.empty((sz, sy, sx), dtype=DTYPE)
+
+    cdef int z, y, x
 
     for z in xrange(sz):
         for y in xrange(sy):
@@ -175,6 +191,7 @@ cpdef np.ndarray[DTYPE_t, ndim=3] relabel1N(np.ndarray[DTYPE_t, ndim=3] seg):
 
     This function also ignores the '0' segment, leaving it as passed in.
     ''' 
+
     cdef np.ndarray[np.uint8_t,    ndim=3, cast=True] mask 
     mask = (seg==0)
     
@@ -183,40 +200,82 @@ cpdef np.ndarray[DTYPE_t, ndim=3] relabel1N(np.ndarray[DTYPE_t, ndim=3] seg):
     sx = seg.shape[2]
 
     cdef np.ndarray[DTYPE_t, ndim=3] seg2 = np.zeros((sz, sy, sx), dtype=DTYPE)
+
     # relabel ID
     cdef np.uint32_t relid = 0
     cdef np.uint32_t z,y,x
+
     for z in xrange(sz):
         for y in xrange(sy):
             for x in xrange(sx):
+
                 if mask[z,y,x]:
                     continue
+
                 relid += 1
+
                 # flood fill
                 seg2, mask = dfs(seg, seg2, mask, relid, seg[z,y,x], z,y,x)
+
     print "number of segments: {}-->{}".format( np.unique(seg).shape[0], np.unique(seg2).shape[0] )
     return seg2
 
+cpdef split_zeros(np.ndarray[DTYPE_t, ndim=1] seg,
+    DTYPE_t segmax):
+    '''
+    Relabels the zero segment of the passed array as
+    singleton voxels (with new ids). Also returns the new
+    maximum segment id.
+    '''
+
+    s = seg.shape[0]
+
+    cdef np.ndarray[DTYPE_t, ndim=1] res = np.empty((s,), dtype=DTYPE)
+
+    cdef int i
+
+    for i in xrange(s):
+
+        if seg[i] == 0:
+            segmax += 1
+            res[i] = segmax
+
+        else:
+            res[i] = seg[i]
+
+    return res, segmax 
+
 cpdef overlap_matrix(
     np.ndarray[DTYPE_t, ndim=1] seg1, 
-    np.ndarray[DTYPE_t, ndim=1] seg2):
+    np.ndarray[DTYPE_t, ndim=1] seg2,
+    bint split0):
     '''
     Calculates the overlap matrix between two segmentations of a volume
 
-    At this point, mostly calls a scipy function, might not be useful here
+    Can also split the '0' segmentation of both arrays into new singleton
+    segments to reflect the semantics of the current watershed code (using split0)
     '''
 
     cdef DTYPE_t seg1max = np.max(seg1)
     cdef DTYPE_t seg2max = np.max(seg2)
 
-    cdef int num_segs1 = seg1max + 1 #+1 accounts for '0' segment
+    if split0:
+        seg1, seg1max = split_zeros(seg1, seg1max)
+        seg2, seg2max = split_zeros(seg2, seg2max)
+
+    cdef int num_segs1 = seg1max + 1 #+1 accounts for base 0 indexing
     cdef int num_segs2 = seg2max + 1
 
     #Representing the sparse overlap matrix as row/col/val arrays
     cdef np.ndarray[DTYPE_t] om_vals
     om_vals = np.ones(seg1.size, dtype=DTYPE) #value for now will always be one
-    
+   
     return sp.coo_matrix((om_vals, (seg1, seg2)), shape=(num_segs1, num_segs2)).tocsr()
+
+
+#===========================================
+# Boundary Thinning Code - not quite finished
+# (will also be finished when enough people complain)
 
 cdef list neighbors(int i, int j, int k, 
     int si, int sj, int sk, bint two_dim):
