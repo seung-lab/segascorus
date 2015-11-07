@@ -298,7 +298,9 @@ def seg_score(om_score_function, score_name,
 	alpha=0.5, split0=True):
 	'''High-level function which handles segmentations'''
 
-	om = calc_overlap_matrix(seg1, seg2)
+	seg1 = seg1.astype(DTYPE)
+	seg2 = seg2.astype(DTYPE)
+	om = calc_overlap_matrix(seg1, seg2, split0)
 
 	score = om_score(om_score_function, score_name,
 		om, merge_score, split_score, alpha)
@@ -309,7 +311,10 @@ def seg_error(om_error_function, error_name,
 	seg1, seg2, merge_err=False, split_err=False, split0=True):
 	'''High-level function which handles segmentations'''
 
-	om = calc_overlap_matrix(seg1, seg2)
+	seg1 = seg1.astype(DTYPE)
+	seg2 = seg2.astype(DTYPE)
+
+	om = calc_overlap_matrix(seg1, seg2, split0)
 
 	score = om_error(om_error_function, error_name,
 		om, merge_err, split_err)
@@ -370,6 +375,7 @@ def seg_2d_rand_error(seg1, seg2, merge_err=False, split_err=False, split0=True)
 	seg1, seg2 = relabel2d(seg1, seg2)
 
 	return seg_rand_error(seg1, seg2, merge_err, split_err, split0)
+#INCOMPLETE
 
 #=====================================================================
 #Utility Functions
