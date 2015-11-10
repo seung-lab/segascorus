@@ -47,7 +47,7 @@ Dependencies:
 -------------
 |Library|
 |:-----:|
-|[Cython](http://cython.org/)|
+|[Cython](http://cython.org/) >= 0.23.4 |
 |[python.tifffile](https://pypi.python.org/pypi/tifffile)|
 |[NumPy](http://www.numpy.org/)|
 |[Scipy](http://www.scipy.org/)|
