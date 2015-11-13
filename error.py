@@ -67,7 +67,6 @@ def choose_two(n):
 	Returns n choose 2. A faster version for np arrays
 	is implemented within the cy module
 	'''
-	# = (n * (n-1)) / 2.0, with fewer overflows
 	return (n / 2.0) * (n-1)
 
 def om_rand_f_score(om, alpha=0.5, merge_score=False, split_score=False):
@@ -324,10 +323,10 @@ def seg_error(om_error_function, error_name,
 #=====================================================================
 #Functions for interactive module use
 
-def seg_rand_score(seg1, seg2, merge_score=False, split_score=False, 
+def seg_rand_f_score(seg1, seg2, merge_score=False, split_score=False, 
 	alpha=0.5, split0=True):
 	'''Computes the Rand F Score for a segmentation'''
-	return seg_score(om_rand_score, "Rand Score",
+	return seg_score(om_rand_f_score, "Rand Score",
 		seg1, seg2, merge_score, split_score, alpha, split0)
 
 def seg_rand_error(seg1, seg2, merge_err=False, split_err=False, split0=True):
@@ -335,10 +334,10 @@ def seg_rand_error(seg1, seg2, merge_err=False, split_err=False, split0=True):
 	return seg_error(om_rand_error, "Rand Error",
 		seg1, seg2, merge_err, split_err, split0)
 
-def seg_variation_score(seg1, seg2, merge_score=False, split_score=False, 
+def seg_variation_f_score(seg1, seg2, merge_score=False, split_score=False, 
 	alpha=0.5, split0=True):
 	'''Computes the Variation of Information F Score for a segmentation'''
-	return seg_score(om_variation_score, "VI Score",
+	return seg_score(om_variation_f_score, "VI Score",
 		seg1, seg2, merge_score, split_score, alpha, split0)
 
 def seg_variation_information(seg1, seg2, merge_err=False, split_err=False, split0=True):
@@ -346,22 +345,22 @@ def seg_variation_information(seg1, seg2, merge_err=False, split_err=False, spli
 	return seg_error(om_variation_information, "Variation of Information",
 		seg1, seg2, merge_err, split_err, split0)
 
-def seg_fr_rand_score(seg1,seg2, merge_score=False, split_score=False, 
+def seg_fr_rand_f_score(seg1,seg2, merge_score=False, split_score=False, 
 	alpha=0.5, split0=True):
 	'''Computes the Rand F Score for a segmentation w/ foreground restriction'''
 	seg1, seg2 = foreground_restriction(seg1, seg2)
-	return seg_rand_score(seg1, seg2, merge_score, split_score, alpha, split0)
+	return seg_rand_f_score(seg1, seg2, merge_score, split_score, alpha, split0)
 
 def seg_fr_rand_error(seg1, seg2, merge_error=False, split_error=False, split0=True):
 	'''Computes the Rand Error for a segmentation w/ foreground restriction'''
 	seg1, seg2 = foreground_restriction(seg1, seg2)
 	return seg_rand_error(seg1, seg2, merge_error, split_error, split0)
 
-def seg_fr_variation_score(seg1, seg2, merge_score=False, split_score=False, 
+def seg_fr_variation_f_score(seg1, seg2, merge_score=False, split_score=False, 
 	alpha=0.5, split0=True):
 	'''Computes the Variation of Information F Score for a segmentation w/ foreground restriction'''
 	seg1, seg2 = foreground_restriction(seg1, seg2)
-	return seg_variation_score(seg1, seg2, merge_score, split_score, alpha, split0)
+	return seg_variation_f_score(seg1, seg2, merge_score, split_score, alpha, split0)
 
 def seg_fr_variation_information(seg1, seg2, merge_error=False, split_error=False, split0=True):
 	'''Computes the Variation of Information for a segmentation w/ foreground restriction'''
@@ -407,7 +406,7 @@ def overflow_warning_check(n_val):
 def import_tif(filename):
     return tifffile.imread(filename).astype(DTYPE)
 
-def inport_h5(filename):
+def import_h5(filename):
     import h5py
 
     f = h5py.File(filename)
