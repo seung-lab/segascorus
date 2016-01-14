@@ -18,8 +18,8 @@ from libc.math cimport log
 #@cython.nonecheck(False)
 
 #THIS SHOULD BE AN INT TYPE
-DTYPE = np.uint64
-ctypedef np.uint64_t DTYPE_t
+DTYPE = np.uint32
+ctypedef np.uint32_t DTYPE_t
 
 cpdef np.ndarray[np.float64_t, ndim=1] shannon_entropy(np.ndarray[np.float64_t, ndim=1] arr):
     '''
@@ -49,6 +49,7 @@ cpdef np.ndarray[np.float64_t, ndim=1] shannon_entropy(np.ndarray[np.float64_t, 
             result[i] = (-1.0) * val * log(val)
 
     return result
+
 
 cpdef np.ndarray[np.float64_t, ndim=1] conditional_entropy(np.ndarray[np.float64_t, ndim=1] vals,
     np.ndarray[np.int32_t, ndim=1] axis_indices,
@@ -90,6 +91,7 @@ cpdef np.ndarray[np.float64_t, ndim=1] conditional_entropy(np.ndarray[np.float64
 
     return result
 
+
 cpdef np.ndarray[DTYPE_t, ndim=1] choose_two(np.ndarray[DTYPE_t, ndim=1] arr):
     '''
     Vectorized version of (n choose 2) operation over a 1d numpy array
@@ -112,6 +114,7 @@ cpdef np.ndarray[DTYPE_t, ndim=1] choose_two(np.ndarray[DTYPE_t, ndim=1] arr):
         result[i] = int((val / 2.0) * (val-1))
 
     return result
+
 
 cpdef np.ndarray[DTYPE_t, ndim=3] relabel_segmentation(np.ndarray[DTYPE_t, ndim=3] seg, np.ndarray[DTYPE_t, ndim=1] relabelling):
     '''
@@ -136,6 +139,7 @@ cpdef np.ndarray[DTYPE_t, ndim=3] relabel_segmentation(np.ndarray[DTYPE_t, ndim=
                 result[z,y,x] = relabelling[seg[z,y,x]]
 
     return result
+
 
 #TO DO make option for 2d/3d
 #This will also be useful once I incorporate functions for 
@@ -245,6 +249,7 @@ cpdef split_zeros(np.ndarray[DTYPE_t, ndim=1] seg,
 
     return res, segmax 
 
+
 cpdef overlap_matrix(
     np.ndarray[DTYPE_t, ndim=1] seg1, 
     np.ndarray[DTYPE_t, ndim=1] seg2,
@@ -277,10 +282,14 @@ cpdef overlap_matrix(
     # print seg2max
 
     #Representing the sparse overlap matrix as row/col/val arrays
-    cdef np.ndarray[DTYPE_t] om_vals
-    om_vals = np.ones(seg1.size, dtype=DTYPE) #value for now will always be one
+    res = sp.dok_matrix( (num_segs1, num_segs2), DTYPE )
+
+    cdef int i
+
+    for i in xrange(seg1.size):
+        res[ seg1[i], seg2[i] ] += 1
    
-    return sp.coo_matrix((om_vals, (seg1, seg2)), shape=(num_segs1, num_segs2)).tocsr()
+    return res.tocsr()
 
 
 #===========================================

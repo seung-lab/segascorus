@@ -69,6 +69,7 @@ def choose_two(n):
 	'''
 	return (n / 2.0) * (n-1)
 
+
 def om_rand_f_score(om, alpha=0.5, merge_score=False, split_score=False):
 	'''
 	Calculates the Rand F-Score (from ISBI2012) of an unnormalized (raw counts) overlap matrix
@@ -109,6 +110,7 @@ def om_rand_f_score(om, alpha=0.5, merge_score=False, split_score=False):
 	else:
 		return full_sc
 
+
 def om_rand_error(om, merge_error=False, split_error=False):
 	'''
 	Calculates the rand error (= 1 - RandIndex) of an unnormalized (raw counts) overlap matrix
@@ -124,23 +126,36 @@ def om_rand_error(om, merge_error=False, split_error=False):
 
 	#for float division below
 	N = float(col_counts.sum())
+	#Numpy has built-in warnings for float overflows,
+	# but not int, so we may have to make do with our own
+	# overflow_warning_check(long(N))
 
 	#TP - True Positive pairs
 	#FP - False Positive pairs
 	#FN - False Negative pairs
-	TPplusFP = np.sum(cy.choose_two( row_counts.ravel() ))
-	TPplusFN = np.sum(cy.choose_two( col_counts.ravel() ))
 
-	p_ij_vals = cy.choose_two( np.copy(om.data) )
-	TP = np.sum(p_ij_vals)
+	#Pre-emptive dividing by N and N-1 helps dodge overflows,
+	# both by keeping values small, and recruiting 
+	# NumPy's float overflow warnings
+	TPplusFP_norm = np.sum(
+		  (row_counts / N) *
+		  ((row_counts - 1) / (N-1))
+		)
+	TPplusFN_norm = np.sum(
+		  (col_counts / N) *
+		  ((col_counts - 1) / (N-1))
+		)
 
-	total_pairs = choose_two(N)
-	overflow_warning_check(total_pairs)
+	c_ij_vals = np.copy(om.data)
+	TP_norm = np.sum(
+		  (c_ij_vals / N) *
+		  ((c_ij_vals - 1) / (N-1))
+		)
 
-	split_err = (TPplusFN - TP) / total_pairs
-	merge_err = (TPplusFP - TP) / total_pairs
+	split_err = TPplusFN_norm - TP_norm
+	merge_err = TPplusFP_norm - TP_norm
 
-	full_err = (TPplusFP + TPplusFN - 2*TP) / total_pairs
+	full_err  = TPplusFP_norm + TPplusFN_norm - 2*TP_norm
 
 	if split_error and merge_error:
 		return full_err, merge_err, split_err
@@ -150,6 +165,7 @@ def om_rand_error(om, merge_error=False, split_error=False):
 		return full_err, merge_err
 	else:
 		return full_err
+
 
 def om_variation_f_score(om, alpha=0.5, merge_score=False, split_score=False):
 	'''
@@ -203,6 +219,7 @@ def om_variation_f_score(om, alpha=0.5, merge_score=False, split_score=False):
 	else:
 		return full_sc
 
+
 def om_variation_information(om, merge_error=False, split_error=False):
 	'''
 	Calculates the variation of information of an unnormalized (raw counts) overlap matrix
@@ -243,6 +260,7 @@ def om_variation_information(om, merge_error=False, split_error=False):
 	else:
 		return full_err
 
+
 def calc_overlap_matrix(seg1, seg2, split_zeros):
 	'''Calculates the overlap matrix of two segmentations'''
 
@@ -254,10 +272,12 @@ def calc_overlap_matrix(seg1, seg2, split_zeros):
 
 	return om
 
+
 def relabel2d(seg1, seg2):
 	'''Relabels segmentations to be 2d for 2d-based error metrics'''
 	print "Relabelling segments for 2d metrics..."
 	return cy.relabel1N(seg1), cy.relabel1N(seg2)
+
 
 def foreground_restriction(seg1, seg2):
 	'''Performs foreground restriction on seg2's foreground'''
@@ -267,6 +287,7 @@ def foreground_restriction(seg1, seg2):
 	seg2_fr = seg2[seg2 != 0]
 
 	return seg1_fr, seg2_fr
+
 
 def om_score(om_score_function, score_name,
 	om, merge_score=False, split_score=False, alpha=0.5):
@@ -280,6 +301,7 @@ def om_score(om_score_function, score_name,
 
 	return score
 
+
 def om_error(om_error_function, error_name,
 	om, merge_err=False, split_err=False):
 	'''Runs an error function, times the calculation, and returns the result'''
@@ -292,13 +314,15 @@ def om_error(om_error_function, error_name,
 	
 	return score
 
+
 def seg_score(om_score_function, score_name, 
 	seg1, seg2, merge_score=False, split_score=False, 
 	alpha=0.5, split0=True):
 	'''High-level function which handles segmentations'''
 
-	seg1 = seg1.astype(DTYPE)
-	seg2 = seg2.astype(DTYPE)
+	assert seg1.dtype == DTYPE
+	assert seg2.dtype == DTYPE
+
 	om = calc_overlap_matrix(seg1, seg2, split0)
 
 	score = om_score(om_score_function, score_name,
@@ -306,12 +330,13 @@ def seg_score(om_score_function, score_name,
 
 	return score
 
+
 def seg_error(om_error_function, error_name,
 	seg1, seg2, merge_err=False, split_err=False, split0=True):
 	'''High-level function which handles segmentations'''
 
-	seg1 = seg1.astype(DTYPE)
-	seg2 = seg2.astype(DTYPE)
+	assert seg1.dtype == DTYPE
+	assert seg2.dtype == DTYPE
 
 	om = calc_overlap_matrix(seg1, seg2, split0)
 
@@ -319,6 +344,7 @@ def seg_error(om_error_function, error_name,
 		om, merge_err, split_err)
 
 	return score
+
 	
 #=====================================================================
 #Functions for interactive module use
@@ -329,10 +355,12 @@ def seg_rand_f_score(seg1, seg2, merge_score=False, split_score=False,
 	return seg_score(om_rand_f_score, "Rand Score",
 		seg1, seg2, merge_score, split_score, alpha, split0)
 
+
 def seg_rand_error(seg1, seg2, merge_err=False, split_err=False, split0=True):
 	'''Computes the Rand Error for a segmentation'''
 	return seg_error(om_rand_error, "Rand Error",
 		seg1, seg2, merge_err, split_err, split0)
+
 
 def seg_variation_f_score(seg1, seg2, merge_score=False, split_score=False, 
 	alpha=0.5, split0=True):
@@ -340,10 +368,12 @@ def seg_variation_f_score(seg1, seg2, merge_score=False, split_score=False,
 	return seg_score(om_variation_f_score, "VI Score",
 		seg1, seg2, merge_score, split_score, alpha, split0)
 
+
 def seg_variation_information(seg1, seg2, merge_err=False, split_err=False, split0=True):
 	'''Computes the Variation of Information for a segmentation'''
 	return seg_error(om_variation_information, "Variation of Information",
 		seg1, seg2, merge_err, split_err, split0)
+
 
 def seg_fr_rand_f_score(seg1,seg2, merge_score=False, split_score=False, 
 	alpha=0.5, split0=True):
@@ -351,10 +381,12 @@ def seg_fr_rand_f_score(seg1,seg2, merge_score=False, split_score=False,
 	seg1, seg2 = foreground_restriction(seg1, seg2)
 	return seg_rand_f_score(seg1, seg2, merge_score, split_score, alpha, split0)
 
+
 def seg_fr_rand_error(seg1, seg2, merge_error=False, split_error=False, split0=True):
 	'''Computes the Rand Error for a segmentation w/ foreground restriction'''
 	seg1, seg2 = foreground_restriction(seg1, seg2)
 	return seg_rand_error(seg1, seg2, merge_error, split_error, split0)
+
 
 def seg_fr_variation_f_score(seg1, seg2, merge_score=False, split_score=False, 
 	alpha=0.5, split0=True):
@@ -362,10 +394,12 @@ def seg_fr_variation_f_score(seg1, seg2, merge_score=False, split_score=False,
 	seg1, seg2 = foreground_restriction(seg1, seg2)
 	return seg_variation_f_score(seg1, seg2, merge_score, split_score, alpha, split0)
 
+
 def seg_fr_variation_information(seg1, seg2, merge_error=False, split_error=False, split0=True):
 	'''Computes the Variation of Information for a segmentation w/ foreground restriction'''
 	seg1, seg2 = foreground_restriction(seg1, seg2)
 	return seg_variation_information(seg1, seg2, merge_error, split_error, split0)
+
 
 #== 2d versions ==#
 def seg_2d_rand_error(seg1, seg2, merge_err=False, split_err=False, split0=True):
@@ -386,6 +420,7 @@ def print_metrics(metrics):
 	for key in keys:
 		print "{}: {}".format(key, metrics[key])
 
+
 def overflow_warning_check(n_val):
 	'''
 	The Python numbers.Integral class can represent more values than NumPy arrays,
@@ -393,24 +428,27 @@ def overflow_warning_check(n_val):
 	errors (which can be silent bugs under Cython). 
 	'''
 
-	warning_string = ("WARNING: total number of pairs exceeds bit length.",
-		"\n You may see overflow errors.\n")
+	warning_string = ("WARNING: total number of pairs exceeds bit length.\n",
+		" You may see overflow errors.\n")
 
 	if DTYPE == 'uint64':
-		if n_val > 2 ** 64:
+		if (n_val ** 2) > 2 ** 32:
 			print warning_string
 	if DTYPE == 'uint32':
-		if n_val > 2 ** 32:
+		if (n_val ** 2) > 2 ** 16:
 			print warning_string
+
 
 def import_tif(filename):
     return tifffile.imread(filename).astype(DTYPE)
+
 
 def import_h5(filename):
     import h5py
 
     f = h5py.File(filename)
     return f['/main'].value.astype(DTYPE)
+
 
 #=====================================================================
 #Main function (script functionality)
@@ -539,43 +577,44 @@ if __name__ == '__main__':
 	#NOTE: "No" args store whether or not to calc the metric
 	# the 'no' part of the flag is for command-line semantics
 	parser.add_argument('-no_rfs','-no_rand_f_score',
-		default=True, action='store_true')
+		default=False, action='store_true')
 	parser.add_argument('-rfs2d','-calc_2d_rand_f_score',
 		default=False, action='store_true')
 
 	parser.add_argument('-no_re','-no_rand_error',
-		default=True, action='store_false')
+		default=False, action='store_true')
 	parser.add_argument('-re2d','-calc_2d_rand_error',
 		default=False, action='store_true')
 
 	parser.add_argument('-no_vifs','-no_variation_f_score',
-		default=True, action='store_false')
+		default=False, action='store_true')
 	parser.add_argument('-vifs2d','-calc_2d_variation_f_score',
 		default=False, action='store_true')
 
 	parser.add_argument('-no_vi','-no_variation_information',
-		default=True, action='store_false')
+		default=False, action='store_true')
 	parser.add_argument('-vi2d','-calc_2d_variation_information',
 		default=False, action='store_true')
 
 	parser.add_argument('-no_fr','-no_foreground_restriction',
-		default=True, action='store_false')
+		default=False, action='store_true')
 	parser.add_argument('-no_split0','-dont_split_0_segment',
-		default=True, action='store_false')
-
+		default=False, action='store_true')
 
 	args = parser.parse_args()
 
+	rfs     = not args.no_rfs
+	re      = not args.no_re
+	vi      = not args.no_vi
+	vifs    = not args.no_vifs
+	fr      = not args.no_fr
+	split0  = not args.no_split0
+
 	main(args.seg1_filename,
 	     args.seg2_filename,
-	     args.no_rfs,
-	     args.rfs2d,
-	     args.no_re,
-	     args.re2d,
-	     args.no_vifs,
-	     args.vifs2d,
-	     args.no_vi,
-	     args.vi2d,
-	     args.no_fr,
-	     args.no_split0)
-
+	     rfs,  args.rfs2d,
+	     re,   args.re2d,
+	     vifs, args.vifs2d,
+	     vi,   args.vi2d,
+	     fr,
+	     sp0)
