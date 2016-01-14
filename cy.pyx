@@ -224,6 +224,51 @@ cpdef np.ndarray[DTYPE_t, ndim=3] relabel1N(np.ndarray[DTYPE_t, ndim=3] seg):
     print "number of segments: {}-->{}".format( np.unique(seg).shape[0], np.unique(seg2).shape[0] )
     return seg2
 
+
+cpdef np.ndarray[DTYPE_t, ndim=3] relabel2d(np.ndarray[DTYPE_t, ndim=3] seg):
+    '''
+    This results layers of 2d segments, and with N higher
+    than the original number of segments.
+
+    This function also ignores the '0' segment, leaving it as passed in.
+    ''' 
+
+    sz = seg.shape[0]
+    sy = seg.shape[1]
+    sx = seg.shape[2]
+
+    cdef np.ndarray[DTYPE_t, ndim=3] seg2 = np.zeros((sz, sy, sx), dtype=DTYPE)
+
+    cdef np.ndarray[DTYPE_t, ndim=1] unique_vals
+    cdef int num_unique_vals
+    
+    cdef np.ndarray[DTYPE_t, ndim=2] source_slice
+    cdef np.ndarray[DTYPE_t, ndim=2] dest_slice
+
+    cdef np.uint32_t new_id = 1
+    cdef np.uint32_t z,y,x
+
+    for z in xrange(sz):
+
+        source_slice = seg[z,:,:]
+        dest_slice   = seg2[z,:,:]
+
+        unique_vals = np.unique( source_slice )
+
+        num_unique_vals = unique_vals.shape[0]
+
+        for i in xrange(num_unique_vals):
+
+            if unique_vals[i] == 0:
+                continue
+
+            dest_slice[source_slice == unique_vals[i]] = new_id
+            new_id += 1
+
+    print "number of segments: {}-->{}".format( np.unique(seg).shape[0], np.unique(seg2).shape[0] )
+    return seg2
+
+
 cpdef split_zeros(np.ndarray[DTYPE_t, ndim=1] seg,
     DTYPE_t segmax):
     '''

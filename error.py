@@ -276,7 +276,7 @@ def calc_overlap_matrix(seg1, seg2, split_zeros):
 def relabel2d(seg1, seg2):
 	'''Relabels segmentations to be 2d for 2d-based error metrics'''
 	print "Relabelling segments for 2d metrics..."
-	return cy.relabel1N(seg1), cy.relabel1N(seg2)
+	return cy.relabel2d(seg1), cy.relabel2d(seg2)
 
 
 def foreground_restriction(seg1, seg2):
