@@ -261,12 +261,13 @@ def om_variation_information(om, merge_error=False, split_error=False):
 		return full_err
 
 
+
 def calc_overlap_matrix(seg1, seg2, split_zeros):
 	'''Calculates the overlap matrix of two segmentations'''
 
 	print "Finding overlap matrix..."
 	start = timeit.default_timer()
-	om = cy.overlap_matrix( seg1.ravel(), seg2.ravel(), split_zeros )
+	om = cy.overlap_matrix_dok( seg1.ravel(), seg2.ravel(), split_zeros )
 	end = timeit.default_timer()
 	print "Completed in %f seconds" % (end-start)
 
