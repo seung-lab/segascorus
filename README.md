@@ -57,3 +57,6 @@ Installation (compiling Cython module):
     make
     
 NOTE: You will see a harmless warning when compiling the Cython functions. See (http://docs.cython.org/src/reference/compilation.html)
+
+If you'd like to use segerror as a python module, rename/move the init.py file within the current directory after compilation
+
