@@ -618,4 +618,4 @@ if __name__ == '__main__':
 	     vifs, args.vifs2d,
 	     vi,   args.vi2d,
 	     fr,
-	     sp0)
+	     split0)
