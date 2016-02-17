@@ -1,4 +1,4 @@
-SegError
+Segascorus
 ========
 
 SeungLab Error Metrics for Volummetric Segmentation
