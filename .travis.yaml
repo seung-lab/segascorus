@@ -1,5 +1,6 @@
 language: python
 os: linux
+sudo: required
 
 python: "2.7"
 
