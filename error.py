@@ -99,7 +99,7 @@ def om_rand_f_score(om, alpha=0.5, merge_score=False, split_score=False):
 	split_sc = (p_term / t_term)
 	merge_sc = (p_term / s_term)
 
-	full_sc = p_term / (alpha * s_term + (1-alpha) * t_term)	
+	full_sc = p_term / (alpha * s_term + (1-alpha) * t_term)
 
 	if split_score and merge_score:
 		return full_sc, merge_sc, split_sc
@@ -135,7 +135,7 @@ def om_rand_error(om, merge_error=False, split_error=False):
 	#FN - False Negative pairs
 
 	#Pre-emptive dividing by N and N-1 helps dodge overflows,
-	# both by keeping values small, and recruiting 
+	# both by keeping values small, and recruiting
 	# NumPy's float overflow warnings
 	TPplusFP_norm = np.sum(
 		  (row_counts / N) *
@@ -173,7 +173,7 @@ def om_variation_f_score(om, alpha=0.5, merge_score=False, split_score=False):
 
 	Can also return split and/or merge error separately assuming that the "ground-truth"
 	segmentation is represented in the 2nd axis (columns)
-	
+
 	In order to use multiple alpha values, pass in an np array of the desired values
 
 	alpha corresponds to the weight of the split score, where 1-alpha
@@ -196,9 +196,9 @@ def om_variation_f_score(om, alpha=0.5, merge_score=False, split_score=False):
 	HS = np.sum(cy.shannon_entropy( s_i.ravel() ))
 
 	if HT == 0:
-		print "WARNING: HT equals zero! You will likely see a RuntimeWarning"
+		print "WARNING: H(T) equals zero! You will likely see a RuntimeWarning"
 	if HS == 0:
-		print "WARNING: HS equals zero! You will likely see a RuntimeWarning"
+		print "WARNING: H(S) equals zero! You will likely see a RuntimeWarning"
 
 	p_ij_vals = (-1.0) * cy.shannon_entropy( (np.copy(om.data) / N) )
 	Hp = np.sum(p_ij_vals)
@@ -226,7 +226,7 @@ def om_variation_information(om, merge_error=False, split_error=False):
 
 	Can also return split and/or merge error separately, yet this assumes that the "ground-truth"
 	segmentation is represented in the 2nd axis (columns)
-	
+
 	In order to use multiple alpha values, pass in a np array of the desired values
 	'''
 
@@ -293,7 +293,7 @@ def foreground_restriction(seg1, seg2):
 def om_score(om_score_function, score_name,
 	om, merge_score=False, split_score=False, alpha=0.5):
 	'''Runs a score function, times the calculation, and returns the result'''
-	
+
 	print "Calculating {}...".format(score_name)
 	start = timeit.default_timer()
 	score = om_score_function(om, alpha, merge_score, split_score)
@@ -312,12 +312,12 @@ def om_error(om_error_function, error_name,
 	score = om_error_function(om, merge_err, split_err)
 	end = timeit.default_timer()
 	print "Completed in %f seconds" % (end-start)
-	
+
 	return score
 
 
-def seg_score(om_score_function, score_name, 
-	seg1, seg2, merge_score=False, split_score=False, 
+def seg_score(om_score_function, score_name,
+	seg1, seg2, merge_score=False, split_score=False,
 	alpha=0.5, split0=True):
 	'''High-level function which handles segmentations'''
 
@@ -346,11 +346,11 @@ def seg_error(om_error_function, error_name,
 
 	return score
 
-	
+
 #=====================================================================
 #Functions for interactive module use
 
-def seg_rand_f_score(seg1, seg2, merge_score=False, split_score=False, 
+def seg_rand_f_score(seg1, seg2, merge_score=False, split_score=False,
 	alpha=0.5, split0=True):
 	'''Computes the Rand F Score for a segmentation'''
 	return seg_score(om_rand_f_score, "Rand Score",
@@ -363,7 +363,7 @@ def seg_rand_error(seg1, seg2, merge_err=False, split_err=False, split0=True):
 		seg1, seg2, merge_err, split_err, split0)
 
 
-def seg_variation_f_score(seg1, seg2, merge_score=False, split_score=False, 
+def seg_variation_f_score(seg1, seg2, merge_score=False, split_score=False,
 	alpha=0.5, split0=True):
 	'''Computes the Variation of Information F Score for a segmentation'''
 	return seg_score(om_variation_f_score, "VI Score",
@@ -376,7 +376,7 @@ def seg_variation_information(seg1, seg2, merge_err=False, split_err=False, spli
 		seg1, seg2, merge_err, split_err, split0)
 
 
-def seg_fr_rand_f_score(seg1,seg2, merge_score=False, split_score=False, 
+def seg_fr_rand_f_score(seg1,seg2, merge_score=False, split_score=False,
 	alpha=0.5, split0=True):
 	'''Computes the Rand F Score for a segmentation w/ foreground restriction'''
 	seg1, seg2 = foreground_restriction(seg1, seg2)
@@ -389,7 +389,7 @@ def seg_fr_rand_error(seg1, seg2, merge_error=False, split_error=False, split0=T
 	return seg_rand_error(seg1, seg2, merge_error, split_error, split0)
 
 
-def seg_fr_variation_f_score(seg1, seg2, merge_score=False, split_score=False, 
+def seg_fr_variation_f_score(seg1, seg2, merge_score=False, split_score=False,
 	alpha=0.5, split0=True):
 	'''Computes the Variation of Information F Score for a segmentation w/ foreground restriction'''
 	seg1, seg2 = foreground_restriction(seg1, seg2)
@@ -426,7 +426,7 @@ def overflow_warning_check(n_val):
 	'''
 	The Python numbers.Integral class can represent more values than NumPy arrays,
 	so it's convenient to use the square/choose_two operation above to check for overflow
-	errors (which can be silent bugs under Cython). 
+	errors (which can be silent bugs under Cython).
 	'''
 
 	warning_string = ("WARNING: total number of pairs exceeds bit length.\n",
@@ -471,10 +471,10 @@ def import_file(filename):
 #=====================================================================
 #Main function (script functionality)
 
-def main(seg1_fname, seg2_fname, 
+def main(seg1_fname, seg2_fname,
 	calc_rand_score=True,
 	calc_2d_rand_score=False,
-	calc_rand_error=True, 
+	calc_rand_error=True,
 	calc_2d_rand_error=False,
 	calc_variation_score=True,
 	calc_2d_variation_score=False,
@@ -548,7 +548,7 @@ def main(seg1_fname, seg2_fname,
 
 		results['2D Rand Error Full'] = f
 		results['2D Rand Error Split'] = s
-		results['2D Rand Error Merge'] = m	
+		results['2D Rand Error Merge'] = m
 
 	if calc_variation_score:
 		(f, m, s) = om_score(om_variation_f_score, "Variation F-Score", om, True, True, 0.5)
@@ -587,7 +587,7 @@ if __name__ == '__main__':
 		description=__doc__,
 		formatter_class=argparse.RawDescriptionHelpFormatter)
 
-	parser.add_argument('seg1_filename', 
+	parser.add_argument('seg1_filename',
 		help="Filename of the output image")
 	parser.add_argument('seg2_filename',
 		help='Filename of the labels for comparison- "ground truth" if available')
