@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-
+__doc__ = """
+Data Representation Utilities - repres_u.py
+"""
 
 #defining NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 import numpy as np
@@ -7,15 +9,12 @@ cimport numpy as np
 import scipy.sparse as sp
 cimport cython
 
+#Defines DTYPE and DTYPE_t
+include "global_vars.pyx"
 
 #@cython.boundscheck(False) # turn off bounds-checking for entire function
 #@cython.wraparound(False)
 #@cython.nonecheck(False)
-
-
-#THIS SHOULD BE AN INT TYPE
-DTYPE = np.uint32
-ctypedef np.uint32_t DTYPE_t
 
 
 cpdef overlap_matrix_coo(
