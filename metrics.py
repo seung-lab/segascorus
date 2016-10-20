@@ -10,11 +10,11 @@ import timeit
 #Dependencies
 import numpy as np
 import scipy.sparse as sp
-import repres
+import data_prep, repres, utils, global_vars
 import metrics_u
 
-#This should be an int type, and consistent with cy.pyx
-DTYPE= repres.DTYPE
+
+DTYPE= global_vars.DTYPE
 
 
 #=====================================================================
@@ -23,52 +23,52 @@ DTYPE= repres.DTYPE
 def seg_rand_f_score(seg1, seg2, merge_score=False, split_score=False,
 	alpha=0.5, split0=True):
 	'''Computes the Rand F Score for a segmentation'''
-	return seg_score(om_rand_f_score, "Rand Score",
-		seg1, seg2, merge_score, split_score, alpha, split0)
+	return seg_metric( seg1, seg2, split0, om_rand_f_score, "Rand Score",
+		           merge_score, split_score, alpha )
 
 
-def seg_rand_error(seg1, seg2, merge_err=False, split_err=False, split0=True):
+def seg_rand_error(seg1, seg2, merge_score=False, split_score=False, split0=True):
 	'''Computes the Rand Error for a segmentation'''
-	return seg_error(om_rand_error, "Rand Error",
-		seg1, seg2, merge_err, split_err, split0)
+	return seg_metric( seg1, seg2, split0, om_rand_error, "Rand Error",
+	                   merge_score, split_score )
 
 
 def seg_variation_f_score(seg1, seg2, merge_score=False, split_score=False,
 	alpha=0.5, split0=True):
 	'''Computes the Variation of Information F Score for a segmentation'''
-	return seg_score(om_variation_f_score, "VI Score",
-		seg1, seg2, merge_score, split_score, alpha, split0)
+	return seg_metric( seg1, seg2, split0, om_variation_f_score, "VI Score",
+	                   merge_score, split_score )
 
 
-def seg_variation_information(seg1, seg2, merge_err=False, split_err=False, split0=True):
+def seg_variation_information(seg1, seg2, merge_score=False, split_score=False, split0=True):
 	'''Computes the Variation of Information for a segmentation'''
-	return seg_error(om_variation_information, "Variation of Information",
-		seg1, seg2, merge_err, split_err, split0)
+	return seg_metric( seg1, seg2, split0, om_variation_information, "Variation of Information",
+	                   merge_score, split_score )
 
 
 def seg_fr_rand_f_score(seg1,seg2, merge_score=False, split_score=False,
 	alpha=0.5, split0=True):
 	'''Computes the Rand F Score for a segmentation w/ foreground restriction'''
-	seg1, seg2 = foreground_restriction(seg1, seg2)
+	seg1, seg2 = data_prep.foreground_restriction(seg1, seg2)
 	return seg_rand_f_score(seg1, seg2, merge_score, split_score, alpha, split0)
 
 
 def seg_fr_rand_error(seg1, seg2, merge_error=False, split_error=False, split0=True):
 	'''Computes the Rand Error for a segmentation w/ foreground restriction'''
-	seg1, seg2 = foreground_restriction(seg1, seg2)
+	seg1, seg2 = data_prep.foreground_restriction(seg1, seg2)
 	return seg_rand_error(seg1, seg2, merge_error, split_error, split0)
 
 
 def seg_fr_variation_f_score(seg1, seg2, merge_score=False, split_score=False,
 	alpha=0.5, split0=True):
 	'''Computes the Variation of Information F Score for a segmentation w/ foreground restriction'''
-	seg1, seg2 = foreground_restriction(seg1, seg2)
+	seg1, seg2 = data_prep.foreground_restriction(seg1, seg2)
 	return seg_variation_f_score(seg1, seg2, merge_score, split_score, alpha, split0)
 
 
 def seg_fr_variation_information(seg1, seg2, merge_error=False, split_error=False, split0=True):
 	'''Computes the Variation of Information for a segmentation w/ foreground restriction'''
-	seg1, seg2 = foreground_restriction(seg1, seg2)
+	seg1, seg2 = data_prep.foreground_restriction(seg1, seg2)
 	return seg_variation_information(seg1, seg2, merge_error, split_error, split0)
 
 
@@ -83,70 +83,40 @@ def seg_2d_rand_error(seg1, seg2, merge_err=False, split_err=False, split0=True)
 
 #============
 #Mid-level fns
-def om_score(om_score_function, score_name,
-	om, merge_score=False, split_score=False, alpha=0.5):
-	'''Runs a score function, times the calculation, and returns the result'''
-
-	print("Calculating {}...".format(score_name))
-	start = timeit.default_timer()
-	score = om_score_function(om, alpha, merge_score, split_score)
-	end = timeit.default_timer()
-	print("Completed in %f seconds" % (end-start))
-
-	return score
 
 
-def om_error(om_error_function, error_name,
-	om, merge_err=False, split_err=False):
+def om_metric( om_metric_fn, metric_name, *args ):
 	'''Runs an error function, times the calculation, and returns the result'''
 
-	print("Calculating {}...".format(error_name))
+	print("Calculating {}...".format(metric_name))
 	start = timeit.default_timer()
-	score = om_error_function(om, merge_err, split_err)
+	score = om_metric_fn(*args)
 	end = timeit.default_timer()
 	print("Completed in %f seconds" % (end-start))
 
 	return score
 
 
-def seg_metric_alpha(om_score_function, score_name,
-	seg1, seg2, merge_score=False, split_score=False,
-	alpha=0.5, split0=True):
+def seg_metric( seg1, seg2, split0, *args ):
 	'''High-level function which handles segmentations'''
 
 	assert seg1.dtype == DTYPE
 	assert seg2.dtype == DTYPE
 
-	om = calc_overlap_matrix(seg1, seg2, split0)
+	om = utils.calc_overlap_matrix(seg1, seg2, split0)
 
-	score = om_score(om_score_function, score_name,
-		om, merge_score, split_score, alpha)
-
-	return score
-
-
-def seg_error(om_error_function, error_name,
-	seg1, seg2, merge_err=False, split_err=False, split0=True):
-	'''High-level function which handles segmentations'''
-
-	assert seg1.dtype == DTYPE
-	assert seg2.dtype == DTYPE
-
-	om = calc_overlap_matrix(seg1, seg2, split0)
-
-	score = om_error(om_error_function, error_name,
-		om, merge_err, split_err)
+	om_metric_fn, metric_name = args[:2]
+	score = om_metric(om_metric_fn, metric_name, om, *args[2:])
 
 	return score
-
 
 
 #====================
 #Overlap Matrix (low-level) fns
 
 
-conditional_entropy = metrics_u.conditional_entropy
 shannon_entropy = metrics_u.shannon_entropy
+conditional_entropy = metrics_u.conditional_entropy
 
 
 def om_rand_f_score( om, merge_score=False, split_score=False, alpha=0.5 ):

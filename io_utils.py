@@ -7,6 +7,9 @@ Nicholas Turner, Ignacio Tartavull 2016
 
 
 from os import path
+import global_vars
+
+DTYPE = global_vars.DTYPE
 
 
 def import_tif(filename):

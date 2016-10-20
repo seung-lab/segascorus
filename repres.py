@@ -4,9 +4,10 @@ Data Representations - repres.py
 """
 import numpy as np
 import scipy.sparse as sp
+import global_vars
 import repres_u
 
-DTYPE = repres_u.DTYPE
+DTYPE = global_vars.DTYPE
 
 class OverlapMatrix:
 
