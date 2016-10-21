@@ -2,7 +2,49 @@
 __doc__ = '''
 Command-line processing - process.py
 
-Nicholas Turner, Jingpeng Wu June-October 2015
+ This module computes the error between two segmentations of a volume.
+The metrics are either based on the Rand Index or Variation of Information, and
+features a few customizable options. These include:
+
+- Foreground Restriction- computing error over voxels where the
+  second segmentation (presumed to be ground truth) != 0.
+  This is applied as a default option.
+
+- Splitting '0' Segment into Singletons- The segment id of 0 often
+  corresponds to a background segment, however it can also represent
+  singleton voxels after processing by watershed. This option re-splits
+  all segments labelled 0 into new segment ids, recovering the singletons.
+  This is applied as a default option, and disabled by -no_split0
+
+- Boundary Thinning- (not complete yet)
+
+Inputs
+
+	- First Segmentation File (seg1, as .tif or hdf5 file)
+	- Second Segmentation File (seg2, as .tif or hdf5 file)
+	  This should be the "ground truth" segmentation if applicable
+	- Foreground Restriction (optional flag -nofr, default=on)
+	- Boundary Thinning (optional flag -bt, not complete yet)
+	- Split 0 Segment (optional flag -no_split0, default=on)
+
+	- Metric Types
+	  (these are all calculated by default)
+		- Rand F Score - ISBI 2012 Error Metric
+		- Rand Error - 1 - RandIndex
+		- Variation F Score - ISBI 2012 Information Theoretic Error Metric
+		- Variation of Information
+	- 2D Metric Types
+	  (not calculated by default)
+		- Rand F Score         -rfs2d
+		- Rand Error           -re2d
+		- Variation F Score    -vifs2d
+		- Variation of Info    -vi2d
+
+Main Outputs:
+
+	-Reports requested error metrics by a print
+
+Nicholas Turner, Jingpeng Wu 2015-2016
 '''
 
 
@@ -11,17 +53,15 @@ import io_utils
 import utils
 from metrics import *
 
+
 def main(seg1_fname, seg2_fname,
 
 	calc_rand_score=True,
-	calc_2d_rand_score=False,
 	calc_rand_error=True,
-	calc_2d_rand_error=False,
 	calc_variation_score=True,
-	calc_2d_variation_score=False,
 	calc_variation_information=True,
-	calc_2d_variation_information=False,
 
+        relabel2d=False,
 	foreground_restricted=True,
 	split_0_segment=True):
 	'''
@@ -33,103 +73,78 @@ def main(seg1_fname, seg2_fname,
 	seg1 = io_utils.import_file(seg1_fname)
 	seg2 = io_utils.import_file(seg2_fname)
 
-	results = {}
 
-	#Whether or not we plan to compute a 2d metric
-	calc_2d_metric = any((calc_2d_rand_score, 
-                              calc_2d_rand_error,
-		              calc_2d_variation_score, 
-                              calc_2d_variation_information))
-
-	#Whether or not we plan to compute a 3d metric
-	calc_3d_metric = any((calc_rand_score, 
-                              calc_rand_error,
-		              calc_variation_score, 
-                              calc_variation_information))
+	prep = parse_fns( prep_fns, 
+                              [relabel2d, foreground_restricted ] )
+	seg1, seg2 = run_preprocessing( seg1, seg2, prep ) 
 
 
-	#relabelling segmentation for 2d metrics (if applicable)
-	if calc_2d_metric:
-		seg1_2d, seg2_2d = data_prep.relabel2d(seg1, seg2)
-
-
-	#foreground restriction
-	if foreground_restricted:
-		if calc_3d_metric:
-			seg1, seg2 = data_prep.foreground_restriction(seg1, seg2)
-
-		if calc_2d_metric:
-			seg1_2d, seg2_2d = data_prep.foreground_restriction(seg1_2d, seg2_2d)
-
-
-	#Calculating the necessary overlap matrices for the
-	# desired output (2d vs. 3d)
-	if calc_3d_metric:
-		om = utils.calc_overlap_matrix(seg1, seg2, split_0_segment)
-	if calc_2d_metric:
-		om_2d = utils.calc_overlap_matrix(seg1_2d, seg2_2d, split_0_segment)
+	om = utils.calc_overlap_matrix(seg1, seg2, split_0_segment)
 
 
 	#Calculating each desired metric
-	if calc_rand_score:
-		(f, m, s) = om_metric(om_rand_f_score, "Rand F-Score", om, True, True, 0.5)
+	metrics = parse_fns( metric_fns,
+                             [calc_rand_score,
+                              calc_rand_error,
+                              calc_variation_score,
+                              calc_variation_information] )
+        
+	results = {}
+	for (name,metric_fn) in metrics:
+	  if relabel2d:
+	    full_name = "2D {}".format(name)
+	  else:
+	    full_name = name
 
-		results['Rand F Score Full'] = f
-		results['Rand F Score Split'] = s
-		results['Rand F Score Merge'] = m
+	  (f,m,s) = metric_fn( om, full_name )
+	  results["{} Full".format(name)] = f
+	  results["{} Merge".format(name)] = m
+	  results["{} Split".format(name)] = s
 
-	if calc_2d_rand_score:
-		(f, m, s) = om_metric(om_rand_f_score, "2D Rand F-Score", om_2d, True, True, 0.5)
-
-		results['2D Rand F Score Full'] = f
-		results['2D Rand F Score Split'] = s
-		results['2D Rand F Score Merge'] = m
-
-	if calc_rand_error:
-		(f, m, s) =  om_metric(om_rand_error, "Rand Error", om, True, True)
-
-		results['Rand Error Full'] = f
-		results['Rand Error Split'] = s
-		results['Rand Error Merge'] = m
-
-	if calc_2d_rand_error:
-
-		(f, m, s) = om_metric(om_rand_error, "2D Rand Error", om_2d, True, True)
-
-		results['2D Rand Error Full'] = f
-		results['2D Rand Error Split'] = s
-		results['2D Rand Error Merge'] = m
-
-	if calc_variation_score:
-		(f, m, s) = om_metric(om_variation_f_score, "Variation F-Score", om, True, True, 0.5)
-
-		results['Variation F Score Full'] = f
-		results['Variation F Score Split'] = s
-		results['Variation F Score Merge'] = m
-
-	if calc_2d_variation_score:
-		(f, m, s) = om_metric(om_variation_f_score, "2D Variation F-Score", om_2d, True, True, 0.5)
-
-		results['2D Variation F Score Full'] = f
-		results['2D Variation F Score Split'] = s
-		results['2D Variation F Score Merge'] = m
-
-	if calc_variation_information:
-		(f, m, s) =  om_metric(om_variation_information, "Variation of Information", om, True, True)
-
-		results['Variation of Information Full'] = f
-		results['Variation of Information Split'] = s
-		results['Variation of Information Merge'] = m
-
-	if calc_2d_variation_information:
-		(f, m, s) =  om_metric(om_variation_information, "2D Variation of Information", om_2d, True, True)
-
-		results['2D Variation of Information Full'] = f
-		results['2D Variation of Information Split'] = s
-		results['2D Variation of Information Merge'] = m
 
 	print()
 	utils.print_metrics(results)
+
+
+metric_fns = [
+    (
+      "Rand F-Score", 
+        lambda om, full_name : 
+            om_metric(om_rand_f_score, full_name, om, True, True, 0.5)
+    ),
+    (
+      "Rand Error"  , 
+        lambda om, full_name : 
+            om_metric(om_rand_error, full_name, om, True, True)
+    ),
+    (
+      "VI F-Score"  ,
+        lambda om, full_name : 
+            om_metric(om_variation_f_score, full_name, om, True, True, 0.5)
+    ),
+    (
+      "Variation of Information" ,
+        lambda om, full_name : 
+            om_metric(om_variation_information, full_name, om, True, True)
+    )
+]
+
+
+prep_fns = [
+    ( "2D Relabeling", data_prep.relabel2d ),
+    ( "Foreground Restriction", data_prep.foreground_restriction )
+]
+
+
+def parse_fns( fns, bools ):
+    return [fns[i] for i in range(len(bools)) if bools[i]]
+
+
+def run_preprocessing( seg1, seg2, fns ):
+    for (name,fn) in fns:
+      seg1, seg2 = fn(seg1, seg2)
+    return seg1, seg2
+
 
 if __name__ == '__main__':
 
@@ -146,24 +161,15 @@ if __name__ == '__main__':
 	# the 'no' part of the flag is for command-line semantics
 	parser.add_argument('-no_rfs','-no_rand_f_score',
 		default=False, action='store_true')
-	parser.add_argument('-rfs2d','-calc_2d_rand_f_score',
-		default=False, action='store_true')
-
 	parser.add_argument('-no_re','-no_rand_error',
 		default=False, action='store_true')
-	parser.add_argument('-re2d','-calc_2d_rand_error',
-		default=False, action='store_true')
-
 	parser.add_argument('-no_vifs','-no_variation_f_score',
 		default=False, action='store_true')
-	parser.add_argument('-vifs2d','-calc_2d_variation_f_score',
-		default=False, action='store_true')
-
 	parser.add_argument('-no_vi','-no_variation_information',
 		default=False, action='store_true')
-	parser.add_argument('-vi2d','-calc_2d_variation_information',
-		default=False, action='store_true')
 
+	parser.add_argument('-rel2d','-2d_relabeling',
+		default=False, action="store_true")
 	parser.add_argument('-no_fr','-no_foreground_restriction',
 		default=False, action='store_true')
 	parser.add_argument('-no_split0','-dont_split_0_segment',
@@ -175,14 +181,16 @@ if __name__ == '__main__':
 	re      = not args.no_re
 	vi      = not args.no_vi
 	vifs    = not args.no_vifs
+	rel2d   =     args.rel2d
 	fr      = not args.no_fr
 	split0  = not args.no_split0
 
 	main(args.seg1_filename,
 	     args.seg2_filename,
-	     rfs,  args.rfs2d,
-	     re,   args.re2d,
-	     vifs, args.vifs2d,
-	     vi,   args.vi2d,
+	     rfs,  
+	     re,  
+	     vifs,
+	     vi,
+	     rel2d,  
 	     fr,
 	     split0)
