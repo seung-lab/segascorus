@@ -29,7 +29,7 @@ cpdef map_over_vals(
 
     for i in xrange(l):
 
-      arr[i] = d[arr[i]]
+      arr[i] = d.get(arr[i],arr[i])
 
 
 cpdef overlap_matrix_coo(

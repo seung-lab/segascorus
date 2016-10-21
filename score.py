@@ -74,20 +74,20 @@ def main(seg1_fname, seg2_fname,
 	seg2 = io_utils.import_file(seg2_fname)
 
 
-	prep = parse_fns( prep_fns,
-                              [relabel2d, foreground_restricted ] )
-	seg1, seg2 = run_preprocessing( seg1, seg2, prep )
+	prep = utils.parse_fns( utils.prep_fns,
+                             [relabel2d, foreground_restricted ] )
+	seg1, seg2 = utils.run_preprocessing( seg1, seg2, prep )
 
 
 	om = utils.calc_overlap_matrix(seg1, seg2, split_0_segment)
 
 
 	#Calculating each desired metric
-	metrics = parse_fns( metric_fns,
-                             [calc_rand_score,
-                              calc_rand_error,
-                              calc_variation_score,
-                              calc_variation_information] )
+	metrics = utils.parse_fns( utils.metric_fns,
+                               [calc_rand_score,
+                                calc_rand_error,
+                                calc_variation_score,
+                                calc_variation_information] )
 
 	results = {}
 	for (name,metric_fn) in metrics:
@@ -105,45 +105,6 @@ def main(seg1_fname, seg2_fname,
 	print()
 	utils.print_metrics(results)
 
-
-metric_fns = [
-    (
-      "Rand F-Score",
-        lambda om, full_name :
-            om_metric(om_rand_f_score, full_name, om, True, True, 0.5)
-    ),
-    (
-      "Rand Error"  ,
-        lambda om, full_name :
-            om_metric(om_rand_error, full_name, om, True, True)
-    ),
-    (
-      "VI F-Score"  ,
-        lambda om, full_name :
-            om_metric(om_variation_f_score, full_name, om, True, True, 0.5)
-    ),
-    (
-      "Variation of Information" ,
-        lambda om, full_name :
-            om_metric(om_variation_information, full_name, om, True, True)
-    )
-]
-
-
-prep_fns = [
-    ( "2D Relabeling", data_prep.relabel2d ),
-    ( "Foreground Restriction", data_prep.foreground_restriction )
-]
-
-
-def parse_fns( fns, bools ):
-    return [fns[i] for i in range(len(bools)) if bools[i]]
-
-
-def run_preprocessing( seg1, seg2, fns ):
-    for (name,fn) in fns:
-      seg1, seg2 = fn(seg1, seg2)
-    return seg1, seg2
 
 
 if __name__ == '__main__':

@@ -7,6 +7,8 @@ Nicholas Turner, Ignacio Tartavull 2016
 
 
 from os import path
+import numpy as np
+
 import global_vars
 
 DTYPE = global_vars.DTYPE
@@ -41,3 +43,26 @@ def import_file(filename):
 	else:
 		raise ValueError('Failed to load filename {} ,Valid file extensions are {}'
 			    			.format(filename, valid_h5_extensions+valid_tif_extensions))
+
+
+def import_ws_file(filename):
+    '''Imports a h5 pyws segmentation file'''
+    import h5py
+
+    f = h5py.File(filename)
+
+    #conversion to explicit np array necessary for later np functions
+    seg = np.array(f['/main']).astype(DTYPE)
+    dend_pairs = f['/dend'].value
+    dend_values = f['/dendValues'].value
+
+    return seg, dend_pairs, dend_values
+
+
+def write_h5_map_file( d, filename ):
+    '''Writes a dict of np arrays to an h5 file'''
+    import h5py
+
+    f = h5py.File(filename)
+    for (k,v) in d.items():
+        f[k] = v
