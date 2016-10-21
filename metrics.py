@@ -174,9 +174,11 @@ def om_rand_error(om, merge_error=False, split_error=False):
 
 	#for float division below
 	N = float(col_counts.sum())
+
 	#Numpy has built-in warnings for float overflows,
 	# but not int, so we may have to make do with our own
 	# overflow_warning_check(long(N))
+
 
 	#TP - True Positive pairs
 	#FP - False Positive pairs
@@ -311,5 +313,3 @@ def om_variation_information(om, merge_error=False, split_error=False):
 		return full_err, merge_err
 	else:
 		return full_err
-
-
