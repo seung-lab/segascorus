@@ -44,7 +44,9 @@ class OverlapMatrix:
         return np.copy(self.mat.data)
 
 
-    def merge(self, groups):
-        #Note, need to delete old axis sums here
-        pass
+    def map(self, mapping):
 
+        i,j,v = self.find()
+        repres_u.map_over_vals( i, mapping )
+
+        self.mat = sp.coo_matrix( (v, (i,j)) ).tocsr()

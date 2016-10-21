@@ -17,6 +17,21 @@ include "global_vars.pyx"
 #@cython.nonecheck(False)
 
 
+cpdef map_over_vals(
+    np.ndarray[int, ndim=1] arr,
+    dict d):
+    """
+    Maps the dict as a fn over the values of the arr
+    """
+
+    l = arr.shape[0]
+    cdef int i
+
+    for i in xrange(l):
+
+      arr[i] = d[arr[i]]
+
+
 cpdef overlap_matrix_coo(
     np.ndarray[DTYPE_t, ndim=1] seg1,
     np.ndarray[DTYPE_t, ndim=1] seg2,
