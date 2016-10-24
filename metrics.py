@@ -16,6 +16,8 @@ import metrics_u
 
 DTYPE= global_vars.DTYPE
 
+#Hack for now
+def_other_label = None
 
 #=====================================================================
 #Functions for interactive module use
@@ -119,7 +121,8 @@ shannon_entropy = metrics_u.shannon_entropy
 conditional_entropy = metrics_u.conditional_entropy
 
 
-def om_rand_f_score( om, merge_score=False, split_score=False, alpha=0.5 ):
+def om_rand_f_score( om, merge_score=False, split_score=False, alpha=0.5,
+                     other_label=def_other_label ):
 	'''
 	Calculates the Rand F-Score (from ISBI2012) of an unnormalized (raw counts) overlap matrix
 
@@ -135,19 +138,30 @@ def om_rand_f_score( om, merge_score=False, split_score=False, alpha=0.5 ):
 	col_counts = om.sum(0) #t_j * N
 	row_counts = om.sum(1) #s_i * N
 
+	if other_label is not None:
+            col_counts[:,other_label] = 0
+
 	#float conversion for division below
-	N = float( col_counts.sum() )
+	N  = float( row_counts.sum() )
+	Nc = float( col_counts.sum() )
+
 
 	#implicit conversion to float64
-	t_term = np.sum( np.square(col_counts / N) )
+	t_term = np.sum( np.square(col_counts / Nc) )
 	s_term = np.sum( np.square(row_counts / N) )
 
-	p_term = np.sum( np.square(om.nonzeros() / N) )
+	rows, cols, vals = om.find()
+	full_p_term = np.sum( np.square(vals / N) )
+        
+	if other_label is not None:
+	  vals[cols == other_label] = 0
+	res_p_term  = np.sum( np.square(vals / Nc) )
 
-	split_sc = (p_term / t_term)
-	merge_sc = (p_term / s_term)
 
-	full_sc = p_term / (alpha * s_term + (1-alpha) * t_term)
+	split_sc = (res_p_term / t_term)
+	merge_sc = (full_p_term / s_term)
+
+	full_sc = 1. / ( alpha / merge_sc + (1-alpha) / split_sc)
 
 	if split_score and merge_score:
 		return full_sc, merge_sc, split_sc
@@ -159,7 +173,7 @@ def om_rand_f_score( om, merge_score=False, split_score=False, alpha=0.5 ):
 		return full_sc
 
 
-def om_rand_error(om, merge_error=False, split_error=False):
+def om_rand_error(om, merge_error=False, split_error=False, other_label=def_other_label):
 	'''
 	Calculates the rand error (= 1 - RandIndex) of an unnormalized (raw counts) overlap matrix
 
@@ -172,8 +186,12 @@ def om_rand_error(om, merge_error=False, split_error=False):
 	col_counts = np.array( om.sum(0) )
 	row_counts = np.array( om.sum(1) )
 
+	if other_label is not None:
+            col_counts[:,other_label] = 0
+
 	#for float division below
-	N = float(col_counts.sum())
+	N  = float(row_counts.sum())
+	Nc = float(col_counts.sum())
 
 	#Numpy has built-in warnings for float overflows,
 	# but not int, so we may have to make do with our own
@@ -192,23 +210,33 @@ def om_rand_error(om, merge_error=False, split_error=False):
 		  ((row_counts - 1) / (N-1))
 		)
 	TPplusFN_norm = np.sum(
-		  (col_counts / N) *
-		  ((col_counts - 1) / (N-1))
+		  (col_counts / Nc) *
+		  ((col_counts - 1) / (Nc-1))
 		)
 
 
-	c_ij_vals = om.nonzeros()
+	rows, cols, c_ij_vals = om.find()
 
 
-	TP_norm = np.sum(
+	TP_norm_full = np.sum(
 		  (c_ij_vals / N) *
 		  ((c_ij_vals - 1) / (N-1))
 		)
 
-	split_err = TPplusFN_norm - TP_norm
-	merge_err = TPplusFP_norm - TP_norm
+	if other_label is not None:
+	  c_ij_vals[cols == other_label] = 0
 
-	full_err  = TPplusFP_norm + TPplusFN_norm - 2*TP_norm
+	TP_norm_res = np.sum(
+		  (c_ij_vals / Nc) *
+		  ((c_ij_vals - 1) / (Nc-1))
+		)
+
+
+	split_err = TPplusFN_norm - TP_norm_res
+	merge_err = TPplusFP_norm - TP_norm_full
+
+	#full_err  = TPplusFP_norm + TPplusFN_norm - 2*TP_norm
+	full_err  = split_err + merge_err
 
 
 	if split_error and merge_error:
@@ -221,7 +249,8 @@ def om_rand_error(om, merge_error=False, split_error=False):
 		return full_err
 
 
-def om_variation_f_score(om, merge_score=False, split_score=False, alpha=0.5):
+def om_variation_f_score(om, merge_score=False, split_score=False, alpha=0.5, 
+        other_label=def_other_label):
 	'''
 	Calculates the variation of information F-Score (from ISBI2012) of an unnormalized (raw counts) overlap matrix
 
@@ -239,11 +268,15 @@ def om_variation_f_score(om, merge_score=False, split_score=False, alpha=0.5):
 	col_counts = np.array( om.sum(0) ) #t_j * N
 	row_counts = np.array( om.sum(1) ) #s_i * N
 
+	if other_label is not None:
+	  col_counts[:,other_label] = 0
+
 	#float conversion for division below (float64)
-	N = float( col_counts.sum() )
+	N = float( row_counts.sum() )
+	Nc = float( col_counts.sum() )
 
 	#implicitly converts to float64
-	t_j = col_counts / N
+	t_j = col_counts / Nc
 	s_i = row_counts / N
 
 	HT = np.sum( shannon_entropy( t_j.ravel() ) )
@@ -254,15 +287,34 @@ def om_variation_f_score(om, merge_score=False, split_score=False, alpha=0.5):
 	if HS == 0:
 		print("WARNING: H(S) equals zero! You will likely see a RuntimeWarning")
 
-	p_ij_vals = (-1.0) * shannon_entropy( (om.nonzeros() / N) )
-	Hp = np.sum(p_ij_vals)
+	rows,cols,vals = om.find()
 
-	I = Hp + HT + HS
+	#p_ij_vals_f = (-1.0) * shannon_entropy( (vals / N) )
+	
+	HTgS = np.sum( conditional_entropy( vals/N, rows, s_i.ravel() ) )
 
-	split_sc = I / HS
-	merge_sc = I / HT
+	if other_label is not None:
+	  vals[cols == other_label] = 0
 
-	full_sc = I / ( (1 - alpha) * HS + alpha * HT )
+	HSgT = np.sum( conditional_entropy( vals/Nc, cols, t_j.ravel() ) )
+
+	split_sc = 1 - HSgT / HS
+	merge_sc = 1 - HTgS / HT
+	#p_ij_vals_r = (-1.0) * shannon_entropy( (vals / N) )
+
+	#Hpf = np.sum(p_ij_vals_f)
+	#Hpr = np.sum(p_ij_vals_r)
+
+	#If = Hpf + HT + HS
+	#Ir = Hpr + HT + HS
+
+	#print(Hpf); print(Hpr)
+	#print(HS); print(HT); print(Ir); print(If)
+	#split_sc = Ir / HS
+	#merge_sc = If / HT
+
+	#full_sc = I / ( (1 - alpha) * HS + alpha * HT )
+	full_sc = 1. / ( alpha / merge_sc + (1-alpha) / split_sc )
 
 	if split_score and merge_score:
 		return full_sc, merge_sc, split_sc
@@ -274,7 +326,8 @@ def om_variation_f_score(om, merge_score=False, split_score=False, alpha=0.5):
 		return full_sc
 
 
-def om_variation_information(om, merge_error=False, split_error=False):
+def om_variation_information(om, merge_error=False, split_error=False, 
+        other_label=def_other_label):
 	'''
 	Calculates the variation of information of an unnormalized (raw counts) overlap matrix
 
@@ -289,19 +342,26 @@ def om_variation_information(om, merge_error=False, split_error=False):
 	col_counts = np.array( om.sum(0) ) #t_j * N
 	row_counts = np.array( om.sum(1) ) #s_i * N
 
+	if other_label is not None:
+	  col_counts[:,other_label] = 0
+
 	#for float division below (float64)
-	N = float( col_counts.sum() )
+	N  = float( row_counts.sum() )
+	Nc = float( col_counts.sum() )
 
 	#implicitly converts to float64
 	# again, conversion to np.array fixes sp weirdness
-	t_j = np.array( col_counts / N )
+	t_j = np.array( col_counts / Nc )
 	s_i = np.array( row_counts / N )
 
 	rows, cols, vals = om.find()
-	vals = vals / N #p_ij
 
-	split_err = np.sum( conditional_entropy( vals, cols, t_j.ravel() ) )
-	merge_err = np.sum( conditional_entropy( vals, rows, s_i.ravel() ) )
+	merge_err = np.sum( conditional_entropy( vals/N, rows, s_i.ravel() ) )
+
+	if other_label is not None:
+	  vals[cols == other_label] = 0
+
+	split_err = np.sum( conditional_entropy( vals/Nc, cols, t_j.ravel() ) )
 
 	full_err = split_err + merge_err
 
