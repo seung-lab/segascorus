@@ -28,10 +28,11 @@ The main executable modules are:
 - plot.py  - Basic plotting functionality of error curves from curve.py
 
 You can learn more about each of these modules by using a help flag.
+
     python{3} score.py --help
     python{3} curve.py --help
     python{3} plot.py --help
-
+    
 metrics.py can also be used as an importable module for more flexible metric computation.
 
 
@@ -44,14 +45,15 @@ Dependencies:
 |[NumPy](http://www.numpy.org/)|
 |[Scipy](http://www.scipy.org/)|
 
-Installation (compiling Cython module):
+Installation (compiling Cython modules):
 -------------
     make
     
 NOTE: You will see a harmless warning when compiling the Cython functions. See (http://docs.cython.org/src/reference/compilation.html)
 
 The codebase is now compatible with python3, in which case you can compile the Cython functions with
-    python3 setup.py build_ext --inplace
+
+    make python3
 
 If you'd like to use segerror as a python module, rename/move the init.py file within the current directory after compilation
 
