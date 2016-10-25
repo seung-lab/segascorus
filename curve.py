@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 __doc__ = '''
 Error Curve Between Segmentations (pyws vs label)
 
@@ -27,10 +28,10 @@ def main( ws_filename, label_filename, output_filename,
           split0=True ):
 
 
+    print("Reading data...")
     ws_seg, dend_pairs, dend_values = io_utils.import_ws_file( ws_filename )
     label_seg = io_utils.import_file( label_filename )
-
-    label_seg = utils.crop(label_seg, ws_seg.shape)
+    assert ws_seg.shape == label_seg.shape
 
 
     thresholds = np.arange(thr_low, thr_high, thr_inc)
@@ -42,16 +43,17 @@ def main( ws_filename, label_filename, output_filename,
     metrics = utils.parse_fns( utils.metric_fns,
                                [calc_rfs,calc_re,
                                 calc_vifs,calc_vi] )
+
     results = init_results( metrics, len(thresholds) )
     #descending threshold to allow incremental merging
     for i in range(thresholds.size-1,-1,-1):
         t = thresholds[i]
         print("Threshold: {}".format(t))
 
-
-        mapping = thresh_MST( dend_pairs, dend_values, t )
-        om.map(mapping)
-
+        start = timeit.default_timer()
+        om.merge_to_thr(dend_pairs, dend_values, t)
+        end = timeit.default_timer()
+        print("Mapping completed in {} seconds".format(end-start))
 
         for (name, fn) in metrics:
             (f,m,s) = fn(om, name)
@@ -71,19 +73,6 @@ def init_results( metrics, num_thresholds ):
         results["{} Split".format(name)] = np.zeros((num_thresholds,))
 
     return results
-
-
-def thresh_MST( dend_pairs, dend_values, thresh ):
-
-    assignment = {}
-
-    for i in range(len(dend_values)):
-
-        if dend_values[i] > thresh:
-            child, parent = dend_pairs[:,i]
-            assignment[ child ] = assignment.get( parent, parent )
-
-    return assignment
 
 
 if __name__ == '__main__':

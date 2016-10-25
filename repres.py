@@ -21,32 +21,32 @@ class OverlapMatrix:
         assert mattype in self.constructor_fns.keys()
 
         self.mat = self.constructor_fns[mattype](seg1.ravel(), seg2.ravel(), split0)
+        #remove duplicates
+        self.mat = self.mat.tocsr().tocoo(copy=False)
 
-        #Avoiding a little overhead by storing the
-        # margin sums between calls
-        #self.__sums = (None,None)
 
 
     def sum(self, axis):
-
-        #if self.__sums[axis] == None:
-        #    self.__sums[axis] == self.mat.sum(axis)
-
-        #return self.__sums[axis]
         return self.mat.sum(axis)
 
 
     def find(self):
-        return sp.find(self.mat)
+        #sp.find turns out to be a bottleneck in scipyV0.18 as it repeatedly
+        # attempts to sum duplicates. There should be no duplicates after
+        # __init__,
+        # so we can remove that step if we're careful about maintaining it
+        A = self.mat.tocoo(copy=False)
+        return A.row,A.col,A.data
 
 
     def nonzeros(self):
         return np.copy(self.mat.data)
 
 
-    def map(self, mapping):
+    def merge_to_thr(self, dend_pairs, dend_values, thresh):
 
         i,j,v = self.find()
-        repres_u.map_over_vals( i, mapping )
+        repres_u.map_to_MST_thresh( i, dend_values, dend_pairs, thresh )
 
-        self.mat = sp.coo_matrix( (v, (i,j)) ).tocsr()
+        #can introduce duplicates here
+        self.mat = sp.coo_matrix( (v, (i,j)) ).tocsr().tocoo(copy=False)
