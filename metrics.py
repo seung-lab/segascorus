@@ -16,8 +16,6 @@ import metrics_u
 
 DTYPE= global_vars.DTYPE
 
-#Hack for now
-def_other_label = None
 
 #=====================================================================
 #Functions for interactive module use
@@ -122,7 +120,7 @@ conditional_entropy = metrics_u.conditional_entropy
 
 
 def om_rand_f_score( om, merge_score=False, split_score=False, alpha=0.5,
-                     other_label=def_other_label ):
+                     other_label=None ):
 	'''
 	Calculates the Rand F-Score (from ISBI2012) of an unnormalized (raw counts) overlap matrix
 
@@ -152,7 +150,7 @@ def om_rand_f_score( om, merge_score=False, split_score=False, alpha=0.5,
 
 	rows, cols, vals = om.find()
 	full_p_term = np.sum( np.square(vals / N) )
-        
+
 	if other_label is not None:
 	  vals[cols == other_label] = 0
 	res_p_term  = np.sum( np.square(vals / Nc) )
@@ -173,7 +171,7 @@ def om_rand_f_score( om, merge_score=False, split_score=False, alpha=0.5,
 		return full_sc
 
 
-def om_rand_error(om, merge_error=False, split_error=False, other_label=def_other_label):
+def om_rand_error(om, merge_error=False, split_error=False, other_label=None):
 	'''
 	Calculates the rand error (= 1 - RandIndex) of an unnormalized (raw counts) overlap matrix
 
@@ -249,8 +247,8 @@ def om_rand_error(om, merge_error=False, split_error=False, other_label=def_othe
 		return full_err
 
 
-def om_variation_f_score(om, merge_score=False, split_score=False, alpha=0.5, 
-        other_label=def_other_label):
+def om_variation_f_score(om, merge_score=False, split_score=False, alpha=0.5,
+        other_label=None):
 	'''
 	Calculates the variation of information F-Score (from ISBI2012) of an unnormalized (raw counts) overlap matrix
 
@@ -279,8 +277,8 @@ def om_variation_f_score(om, merge_score=False, split_score=False, alpha=0.5,
 	t_j = col_counts / Nc
 	s_i = row_counts / N
 
-	HT = np.sum( shannon_entropy( t_j.ravel() ) )
-	HS = np.sum( shannon_entropy( s_i.ravel() ) )
+	HT = shannon_entropy( t_j.ravel() )
+	HS = shannon_entropy( s_i.ravel() )
 
 	if HT == 0:
 		print("WARNING: H(T) equals zero! You will likely see a RuntimeWarning")
@@ -290,13 +288,13 @@ def om_variation_f_score(om, merge_score=False, split_score=False, alpha=0.5,
 	rows,cols,vals = om.find()
 
 	#p_ij_vals_f = (-1.0) * shannon_entropy( (vals / N) )
-	
-	HTgS = np.sum( conditional_entropy( vals/N, rows, s_i.ravel() ) )
+
+	HTgS = conditional_entropy( vals/N, rows, s_i.ravel() )
 
 	if other_label is not None:
 	  vals[cols == other_label] = 0
 
-	HSgT = np.sum( conditional_entropy( vals/Nc, cols, t_j.ravel() ) )
+	HSgT = conditional_entropy( vals/Nc, cols, t_j.ravel() )
 
 	split_sc = 1 - HSgT / HS
 	merge_sc = 1 - HTgS / HT
@@ -326,8 +324,8 @@ def om_variation_f_score(om, merge_score=False, split_score=False, alpha=0.5,
 		return full_sc
 
 
-def om_variation_information(om, merge_error=False, split_error=False, 
-        other_label=def_other_label):
+def om_variation_information(om, merge_error=False, split_error=False,
+        other_label=None):
 	'''
 	Calculates the variation of information of an unnormalized (raw counts) overlap matrix
 
@@ -356,12 +354,12 @@ def om_variation_information(om, merge_error=False, split_error=False,
 
 	rows, cols, vals = om.find()
 
-	merge_err = np.sum( conditional_entropy( vals/N, rows, s_i.ravel() ) )
+	merge_err = conditional_entropy( vals/N, rows, s_i.ravel() )
 
 	if other_label is not None:
 	  vals[cols == other_label] = 0
 
-	split_err = np.sum( conditional_entropy( vals/Nc, cols, t_j.ravel() ) )
+	split_err = conditional_entropy( vals/Nc, cols, t_j.ravel() )
 
 	full_err = split_err + merge_err
 
