@@ -44,6 +44,7 @@ Dependencies:
 |[python.tifffile](https://pypi.python.org/pypi/tifffile)|
 |[NumPy](http://www.numpy.org/)|
 |[Scipy](http://www.scipy.org/)|
+|[matplotlib](http://matplotlib.org/)|
 
 Installation (compiling Cython modules):
 -------------
