@@ -1,4 +1,9 @@
+#!/usr/bin/env python
+__doc__ = """
+Plotting Functionality
 
+usage: plot.py "${metric}" ${dset1_name} ${dset1_file} ${dset2_name} ...
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 import h5py
@@ -64,6 +69,7 @@ def main( names, filenames, metric_name ):
 
     print("Plotting files...")
     plot_all_curves( data )
+
 
 if __name__ == '__main__':
 

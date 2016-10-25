@@ -10,10 +10,12 @@ cimport numpy as np
 import scipy.sparse as sp
 cimport cython
 
+
 from libc.math cimport log
 #@cython.boundscheck(False) # turn off bounds-checking for entire function
 #@cython.wraparound(False)
 #@cython.nonecheck(False)
+
 
 include "global_vars.pyx"
 

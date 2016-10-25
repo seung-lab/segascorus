@@ -16,7 +16,6 @@ features a few customizable options. These include:
   all segments labelled 0 into new segment ids, recovering the singletons.
   This is applied as a default option, and disabled by -no_split0
 
-- Boundary Thinning- (not complete yet)
 
 Inputs
 
@@ -61,11 +60,12 @@ def main(seg1_fname, seg2_fname,
 	calc_variation_score=True,
 	calc_variation_information=True,
 
-        relabel2d=False,
+    relabel2d=False,
 	foreground_restricted=True,
 	split_0_segment=True):
 	'''
-	Script functionality, computes the overlap matrix, computes any specified metrics,
+	Script functionality, computes the overlap matrix,
+    computes any specified metrics,
 	and prints the results nicely
 	'''
 
@@ -105,6 +105,14 @@ def main(seg1_fname, seg2_fname,
 	print()
 	utils.print_metrics(results)
 
+
+def compute_all(om):
+    """Useful for benchmarking"""
+
+    om_rand_f_score( om, True, True )
+    om_rand_error( om, True, True )
+    om_variation_f_score( om, True, True )
+    om_variation_information( om, True, True )
 
 
 if __name__ == '__main__':
