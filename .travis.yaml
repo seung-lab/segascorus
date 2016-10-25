@@ -11,6 +11,8 @@ before_install:
         - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
         - sudo apt-get -qq update
 
+sudo: required
+
 install:
         - sudo apt-get install python2.7 python2.7-dev python-pip 
         - sudo pip install --upgrade pip
