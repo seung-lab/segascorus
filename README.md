@@ -6,7 +6,7 @@ Segascorus
 SeungLab Error Metrics for Volummetric Segmentation
 ---------------------------------------------------
 
- This module computes the error between two segmentations of a volume.
+ This package computes the error between two segmentations of a volume.
 The metrics are either based on the Rand Index or Variation of Information, and
 features a few customizable options. These include:
 
@@ -20,29 +20,20 @@ features a few customizable options. These include:
   all segments labelled 0 into new segment ids, recovering the singletons.
   This is applied as a default option, and disabled by -no_split0
 
-- Boundary Thinning- (not complete yet)
+See the [manual](https://github.com/seung-lab/segascorus/blob/master/segerror-manual.pdf) for detailed descriptions of each metric and its computation.
 
-Inputs:
--------
-- First Segmentation File (seg1, as .tif file)
-- Second Segmentation File (seg2, as .tif file)
- This should be the "ground truth" segmentation if applicable
-- Foreground Restriction (optional flag -nofr, default=on)
-- Boundary Thinning (not complete yet)
-- Split 0 Segment (optional flag -no_split0, default=on)
+The main executable modules are:
+- `score.py` - One-shot scoring/comparison of two segmentations
+- `curve.py` - Computing error curves over the threshold a watershed MST (see [Watershed](https://github.com/seung-lab/Watershed.jl))
+- `plot.py`  - Basic plotting functionality of error curves from curve.py
 
-- Metric Types
-  (all calculated by default)
- - Rand F Score - ISBI 2012 Error Metric
- - Rand Error - 1 - RandIndex
- - Variation F Score - ISBI 2012 Information Theoretic Error Metric
- - Variation of Information
-- 2D Metric Types
-  (not calculated by default)
-	- Rand F Score         -rfs2d
-	- Rand Error           -re2d
-	- Variation F Score    -vifs2d
-	- Variation of Info    -vi2d
+You can learn more about each of these modules by using a help flag.
+
+    python{3} score.py --help
+    python{3} curve.py --help
+    python{3} plot.py --help
+    
+`metrics.py` can also be used as an importable module for more flexible metric computation.
 
 
 Dependencies:
@@ -53,12 +44,19 @@ Dependencies:
 |[python.tifffile](https://pypi.python.org/pypi/tifffile)|
 |[NumPy](http://www.numpy.org/)|
 |[Scipy](http://www.scipy.org/)|
+|[matplotlib](http://matplotlib.org/)|
 
-Installation (compiling Cython module):
+Installation (compiling Cython modules):
 -------------
     make
     
 NOTE: You will see a harmless warning when compiling the Cython functions. See (http://docs.cython.org/src/reference/compilation.html)
 
+The codebase is now compatible with python3, in which case you can compile the Cython functions with
+
+    make python3
+
 If you'd like to use segerror as a python module, rename/move the init.py file within the current directory after compilation
+
+
 
