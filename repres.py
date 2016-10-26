@@ -35,7 +35,7 @@ class OverlapMatrix:
         # attempts to sum duplicates. There should be no duplicates after
         # __init__,
         # so we can remove that step if we're careful about maintaining it
-        A = self.mat.tocoo(copy=False)
+        A = self.mat.tocoo(copy=True)
         return A.row,A.col,A.data
 
 
