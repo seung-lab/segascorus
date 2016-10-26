@@ -23,16 +23,17 @@ features a few customizable options. These include:
 See the [manual](https://github.com/seung-lab/segascorus/blob/master/segerror-manual.pdf) for detailed descriptions of each metric and its computation.
 
 The main executable modules are:
-- score.py - One-shot scoring/comparison of two segmentations
-- curve.py - Computing error curves over the threshold a watershed MST (see [Watershed](https://github.com/seung-lab/Watershed.jl))
-- plot.py  - Basic plotting functionality of error curves from curve.py
+- `score.py` - One-shot scoring/comparison of two segmentations
+- `curve.py` - Computing error curves over the threshold a watershed MST (see [Watershed](https://github.com/seung-lab/Watershed.jl))
+- `plot.py`  - Basic plotting functionality of error curves from curve.py
 
 You can learn more about each of these modules by using a help flag.
+
     python{3} score.py --help
     python{3} curve.py --help
     python{3} plot.py --help
-
-metrics.py can also be used as an importable module for more flexible metric computation.
+    
+`metrics.py` can also be used as an importable module for more flexible metric computation.
 
 
 Dependencies:
@@ -43,15 +44,17 @@ Dependencies:
 |[python.tifffile](https://pypi.python.org/pypi/tifffile)|
 |[NumPy](http://www.numpy.org/)|
 |[Scipy](http://www.scipy.org/)|
+|[matplotlib](http://matplotlib.org/)|
 
-Installation (compiling Cython module):
+Installation (compiling Cython modules):
 -------------
     make
     
 NOTE: You will see a harmless warning when compiling the Cython functions. See (http://docs.cython.org/src/reference/compilation.html)
 
 The codebase is now compatible with python3, in which case you can compile the Cython functions with
-    python3 setup.py build_ext --inplace
+
+    make python3
 
 If you'd like to use segerror as a python module, rename/move the init.py file within the current directory after compilation
 
