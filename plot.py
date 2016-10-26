@@ -38,8 +38,8 @@ def extract_values_from_file( filename, metric_name ):
 
     f = h5py.File(filename)
 
-    full_name_split = "{} Split".format(metric_name)
-    full_name_merge = "{} Merge".format(metric_name)
+    full_name_split = "{}/Split".format(metric_name)
+    full_name_merge = "{}/Merge".format(metric_name)
 
     split = f[full_name_split].value
 
