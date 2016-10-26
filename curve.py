@@ -36,6 +36,10 @@ def main( ws_filename, label_filename, output_filename,
 
     thresholds = np.arange(thr_low, thr_high, thr_inc)
 
+    prep = utils.parse_fns( utils.prep_fns,
+                            [rel2d, foreground_restriction] )
+    ws_seg, label_seg = utils.run_preprocessing( ws_seg, label_seg, prep )
+
 
     om = utils.calc_overlap_matrix( ws_seg, label_seg, split0 )
 
@@ -57,20 +61,21 @@ def main( ws_filename, label_filename, output_filename,
 
         for (name, fn) in metrics:
             (f,m,s) = fn(om, name)
-            results["{} Full".format(name)][i] = f
-            results["{} Merge".format(name)][i] = m
-            results["{} Split".format(name)][i] = s
+            results["{}/Full".format(name)][i] = f
+            results["{}/Merge".format(name)][i] = m
+            results["{}/Split".format(name)][i] = s
 
     if len(results) > 0:
+        results["Thresholds"] = thresholds
         io_utils.write_h5_map_file( results, output_filename )
 
 
 def init_results( metrics, num_thresholds ):
     results = {}
     for (name, fn) in metrics:
-        results["{} Full".format(name)] = np.zeros((num_thresholds,))
-        results["{} Merge".format(name)] = np.zeros((num_thresholds,))
-        results["{} Split".format(name)] = np.zeros((num_thresholds,))
+        results["{}/Full".format(name)] = np.zeros((num_thresholds,))
+        results["{}/Merge".format(name)] = np.zeros((num_thresholds,))
+        results["{}/Split".format(name)] = np.zeros((num_thresholds,))
 
     return results
 
