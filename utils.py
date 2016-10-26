@@ -17,23 +17,23 @@ import numpy as np
 metric_fns = [
     (
       "Rand F-Score",
-        lambda om, full_name :
-            om_metric(om_rand_f_score, full_name, om, True, True, 0.5)
+        lambda om, full_name, other :
+            om_metric(om_rand_f_score, full_name, om, True, True, 0.5, other)
     ),
     (
       "Rand Error"  ,
-        lambda om, full_name :
-            om_metric(om_rand_error, full_name, om, True, True)
+        lambda om, full_name, other :
+            om_metric(om_rand_error, full_name, om, True, True, other)
     ),
     (
       "VI F-Score"  ,
-        lambda om, full_name :
-            om_metric(om_variation_f_score, full_name, om, True, True, 0.5)
+        lambda om, full_name, other :
+            om_metric(om_variation_f_score, full_name, om, True, True, 0.5, other)
     ),
     (
       "Variation of Information" ,
-        lambda om, full_name :
-            om_metric(om_variation_information, full_name, om, True, True)
+        lambda om, full_name, other :
+            om_metric(om_variation_information, full_name, om, True, True, other)
     )
 ]
 

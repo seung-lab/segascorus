@@ -25,7 +25,9 @@ def main( ws_filename, label_filename, output_filename,
 
           rel2d=False,
           foreground_restriction=False,
-          split0=True ):
+          split0=True,
+
+          other=None):
 
 
     print("Reading data...")
@@ -60,7 +62,7 @@ def main( ws_filename, label_filename, output_filename,
         print("Mapping completed in {} seconds".format(end-start))
 
         for (name, fn) in metrics:
-            (f,m,s) = fn(om, name)
+            (f,m,s) = fn(om, name, other)
             results["{}/Full".format(name)][i] = f
             results["{}/Merge".format(name)][i] = m
             results["{}/Split".format(name)][i] = s
@@ -120,6 +122,9 @@ if __name__ == '__main__':
     parser.add_argument('-no_split0','-dont_split_0_segment',
     	default=False, action='store_true')
 
+    parser.add_argument('-other', type=int,
+	default=None)
+
     args = parser.parse_args()
 
     rfs     = not args.no_rfs
@@ -137,4 +142,6 @@ if __name__ == '__main__':
 
          rfs,re,vifs,vi,
 
-         rel2d,fr, split0)
+         rel2d,fr, split0,
+
+         args.other)

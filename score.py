@@ -60,9 +60,11 @@ def main(seg1_fname, seg2_fname,
 	calc_variation_score=True,
 	calc_variation_information=True,
 
-    relabel2d=False,
+	relabel2d=False,
 	foreground_restricted=True,
-	split_0_segment=True):
+	split_0_segment=True,
+
+	other=None):
 	'''
 	Script functionality, computes the overlap matrix,
     computes any specified metrics,
@@ -96,13 +98,13 @@ def main(seg1_fname, seg2_fname,
 	  else:
 	    full_name = name
 
-	  (f,m,s) = metric_fn( om, full_name )
+	  (f,m,s) = metric_fn( om, full_name, other )
 	  results["{} Full".format(name)] = f
 	  results["{} Merge".format(name)] = m
 	  results["{} Split".format(name)] = s
 
 
-	print()
+	print("")
 	utils.print_metrics(results)
 
 
@@ -144,6 +146,9 @@ if __name__ == '__main__':
 	parser.add_argument('-no_split0','-dont_split_0_segment',
 		default=False, action='store_true')
 
+	parser.add_argument('-other', type=int,
+		default=None)
+
 	args = parser.parse_args()
 
 	rfs     = not args.no_rfs
@@ -162,4 +167,5 @@ if __name__ == '__main__':
 	     vi,
 	     rel2d,
 	     fr,
-	     split0)
+	     split0,
+             args.other)
