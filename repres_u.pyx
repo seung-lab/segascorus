@@ -41,6 +41,24 @@ cpdef map_to_MST_thresh(
       segids[i] = v
 
 
+cpdef dict_thresh_MST(
+    np.ndarray[np.float32_t, ndim=1] dend_values,
+    np.ndarray[DTYPE_t, ndim=2] dend_pairs,
+    np.float64_t t):
+
+    mapping = thresh_MST(dend_values, dend_pairs, t)
+
+    d = {}
+    l = dend_values.shape[0]
+
+    for i in range(l):
+      child, parent = dend_pairs[:,i]
+
+      d[child] = mapping[child]
+
+    return d
+
+
 cdef unordered_map[int,int] thresh_MST(
     np.ndarray[np.float32_t, ndim=1] dend_values,
     np.ndarray[DTYPE_t, ndim=2] dend_pairs,
@@ -50,12 +68,10 @@ cdef unordered_map[int,int] thresh_MST(
 
     l = dend_values.shape[0]
     cdef int i
-    cdef int count
     cdef DTYPE_t child, parent
 
     for i in range(l):
       if dend_values[i] > t:
-        count += 1
 
         child, parent = dend_pairs[:,i]
 
@@ -63,6 +79,23 @@ cdef unordered_map[int,int] thresh_MST(
           assignment[child] = parent
         else:
           assignment[child] = assignment[parent]
+
+    cdef DTYPE_t current, next_val
+
+    for i in range(l):
+      child, parent = dend_pairs[:,i]
+
+      while True:
+        current = assignment[child]
+
+        if current == 0: #should only happen on the first iter
+          break
+
+        next_val = assignment[current]
+        if next_val == 0:
+          break
+
+        assignment[child] = next_val 
 
     return assignment
 
@@ -79,6 +112,31 @@ cpdef map_over_vals(
 
     for i in xrange(l):
       arr[i] = d.get(arr[i],arr[i])
+
+cpdef thresh_seg(
+      np.ndarray[DTYPE_t,ndim=3] seg,
+      np.ndarray[np.float32_t, ndim=1] dend_values,
+      np.ndarray[DTYPE_t, ndim=2] dend_pairs,
+      np.float64_t t):
+
+    mapping = thresh_MST( dend_values, dend_pairs, t )
+
+    sz = seg.shape[0]
+    sy = seg.shape[1]
+    sx = seg.shape[2]
+
+    cdef int z, y, x
+    cdef DTYPE_t v
+
+    for z in xrange(sz):
+      for y in xrange(sy):
+        for x in xrange(sx):
+
+          v = seg[z,y,x];
+          if mapping[v] == 0:
+            continue
+
+          seg[z,y,x] = mapping[v]
 
 
 cpdef overlap_matrix_coo(
@@ -105,10 +163,6 @@ cpdef overlap_matrix_coo(
     cdef int num_segs1 = seg1max + 1 #+1 accounts for base 0 indexing
     cdef int num_segs2 = seg2max + 1
 
-    #MORE lembas bread
-    # print "max after split (including implicit 0)"
-    # print seg1max
-    # print seg2max
 
     #Representing the sparse overlap matrix as row/col/val arrays
     cdef np.ndarray[DTYPE_t] om_vals = np.ones(seg1.size, dtype=DTYPE) #value for now will always be one

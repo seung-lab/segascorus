@@ -48,5 +48,5 @@ class OverlapMatrix:
         i,j,v = self.find()
         repres_u.map_to_MST_thresh( i, dend_values, dend_pairs, thresh )
 
-        #can introduce duplicates here
+        #can introduce duplicates here, tocsr should sum them
         self.mat = sp.coo_matrix( (v, (i,j)) ).tocsr().tocoo(copy=False)
